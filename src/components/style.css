@@ -1,0 +1,35 @@
+ul{
+    display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 60px;
+
+position: absolute;
+width: 738px;
+height: 19px;
+left: 798px;
+top: 115px;
+
+}
+
+li{
+    
+width: 45px;
+height: 19px;
+
+font-family: 'Gotham';
+font-style: normal;
+font-weight: 325;
+font-size: 16px;
+line-height: 19px;
+letter-spacing: 0.02em;
+
+color: #FFFFFF;
+
+
+
+flex: none;
+order: 1;
+flex-grow: 0;
+}
