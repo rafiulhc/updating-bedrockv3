@@ -6,7 +6,8 @@ import {
   getBedrockStakingContract,
   getBedrockContract,
   getBitcoinStakingContract,
-  getBtcbContract
+  getBtcbContract,
+  getBtcbDripContract
 
 } from "../utils/contractHelpers";
 import { getProviderOrSigner } from "../utils";
@@ -16,9 +17,6 @@ import useMetaMask from "./useMetaMask";
 
 export const useBedrockProjectContract = (address: string) => {
 
-  
-
-  
   const { library, account, chainId } = useActiveWeb3React();
 
   // console.log("useaddress: ",account);
@@ -45,7 +43,7 @@ export const useBedrockContract = () => {
 }
 
 export const useBedrockStakingContract = () => {
-  const { library } =  useActiveWeb3React()  
+  const { library } =  useActiveWeb3React()
   return useMemo(() => getBedrockStakingContract(library.getSigner()), [library])
 }
 
@@ -59,3 +57,9 @@ export const useBtcbContract = () => {
   const {account} = useMetaMask();
   return useMemo(() => getBtcbContract(library.getSigner()), [library,account])
 }
+
+export const useBtcbDripContract = () => {
+  const { library } = useActiveWeb3React();
+  return useMemo(() => getBtcbDripContract(library.getSigner()), [library])
+}
+
