@@ -32,13 +32,13 @@ const NewTabsSection = styled.div`
 
 const NewTabsContainer = styled.div`
   width: 100%;
-  max-width: 763px;
+  max-width: 963px;
   overflow: hidden;
 `;
 
 const NewTabsHeaderScrollContainer = styled.div`
   width: 100%;
-  max-width: 763px;
+  max-width: 963px;
   overflow: auto;
 
   &::-webkit-scrollbar {
@@ -398,7 +398,7 @@ function Tabs() {
                   selected={TabsArray[activeTab] === val}
                   key={val}
                   onClick={() => {
-                    if (index === 2 || index === 3) {
+                    if (index === 2 || index === 3 || index === 4) {
                       setIsClaim(true);
                     } else setIsClaim(false);
                     setActiveTab(index)
