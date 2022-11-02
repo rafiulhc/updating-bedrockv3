@@ -1,27 +1,18 @@
 import React, { useState, useEffect } from "react";
-import Paragraph from "../../../components/Paragraph";
-import EarnAction from "./EarnActions";
-import EarnInput from "./EarnInput";
-import StakeAmount from "./StakeAmout";
-import { ethers } from "ethers";
-import TabCard from "./TabCard";
-import TabContainer from "./TabContainer";
-import TabItem from "./TabItem";
-import TabRow from "./TabRow";
 import Button from "../../../components/Button";
 import useWindowSize from "../../../hooks/useWindowSize";
 import styled from "styled-components";
 import { Card, InputField } from "../../Swap/components/index";
 import BigNumber from "bignumber.js";
-import axios from "axios";
 import { useRouter } from "next/router";
-
 import useActiveWeb3React from "../../../hooks/useActiveWeb3React";
 import useMetamask from "../../../hooks/useMetaMask";
+
 import {
   useBitcoinStakingContract,
   useBtcbContract,
   useBedrockContract,
+  useBtcbDripContract
 } from "../../../hooks/useContract";
 
 const NewTabsSection = styled.div`
@@ -97,131 +88,90 @@ const BalanceTextMobile = styled.div`
 `
 
 function Tabs() {
-  const TabsArray = ["Deposit", "Withdraw", "Claim Bitcoin", "Claim Rock", "Roll Rock"];
-  const { width } = useWindowSize();
+  const TabsArray = ["Deposit", "Withdraw", "Claim Bitcoin", "Claim Rock", "Rock Slide"];
   const [activeTab, setActiveTab] = useState(0);
-  const [activeTabContent, setActiveTabContent] = useState(TabsArray[0]);
-
   const [claimState, setClaimState] = useState("");
-  const [modWallet, setModWallet] = useState("");
   const [claimableRock, setClaimableRock] = useState(0);
-  const [nextDripTime, setNextDripTime] = useState(0);
   const [claimableBitcoin, setClaimableBitcoin] = useState(0);
   const [investedRock, setInvestedRock] = useState(0);
-  const [poolBitcoin, setPoolBitcoin] = useState(0);
-  const [poolRock, setPoolRock] = useState(0);
   const [userRockBalance, setUserRockBalance] = useState(0);
   const [depositAmount, setDepositAmount] = useState(0);
   const [depositState, setDepositState] = useState("");
   const [withdrawalAmount, setWithdrawalAmount] = useState(0);
   const [withdrawalState, setWithdrawalState] = useState("");
-  const [nextDripValue, setNextDripValue] = useState(0);
-  const [myPoolShare, setMyPoolShare] = useState(0);
-
-  const { library } = useActiveWeb3React();
+  const [distributeState, setDistributeState] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [ isMax, setIsMax ] = useState(false);
   const { account } = useMetamask();
-  const btcStaking = useBitcoinStakingContract();
   const btcContract = useBtcbContract();
   const rockContract = useBedrockContract();
+  const btcbDripContract = useBtcbDripContract();
   const router = useRouter();
 
-  const api =
-    (router as any).hostname === "localhost"
-      ? "http://localhost:8080"
-      : "https://bedrock-backend.vercel.app";
-
-  // next btc drip value
-  useEffect(() => {
-    let btcbPrice = 0;
-    const asyncEffect = async () => {
-      const res = await axios.get(
-        `https://api.pancakeswap.info/api/v2/tokens/0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c`
-      );
-      btcbPrice = parseInt(res.data.data.price);
-      setNextDripValue(poolBitcoin * 0.01 * parseInt(btcbPrice?.toFixed(0)));
-      setMyPoolShare(new BigNumber((investedRock / poolRock) * 100).toNumber());
-    };
-    asyncEffect();
-  }, [poolBitcoin, investedRock, poolRock]);
 
   useEffect(() => {
     const fetchStakeData = async () => {
       if (account) {
-        await btcStaking.functions.unclaimedRock(account).then((res) => {
+        await btcbDripContract.functions.unclaimedRock(account).then((res) => {
           setClaimableRock(new BigNumber(res).dividedBy(10 ** 18).toNumber());
         });
-        await btcStaking.functions.rockStakes(account).then((res) => {
+        await btcbDripContract.functions.rockStakes(account).then((res) => {
           setInvestedRock(new BigNumber(res).dividedBy(10 ** 18).toNumber());
         });
         await rockContract.functions.balanceOf(account).then((res) => {
           setUserRockBalance(new BigNumber(res).dividedBy(10 ** 18).toNumber());
         });
-      }
-      await axios
-        .get(`/api/getBitcoinRewards/?wallet=${account}`)
-        .then((res) => {
-          if (!res || res.status !== 200) {
-            return;
-          }
-          if (res.data.nextRelease) {
-            setNextDripTime(
-              Math.ceil((res.data.nextRelease - Date.now()) / 1000)
-            );
-          }
-          setModWallet(res.data.moderatorWallet || "");
-          if (res.data.staked.length === 0) {
-            return;
-          }
-          setClaimableBitcoin(
-            new BigNumber(res.data.staked[0].amount)
-              .dividedBy(10 ** 18)
-              .toNumber()
-          );
-        })
-        .catch((err) => {
-          console.log(err);
+        await btcbDripContract.functions.rockStakes(account).then((res) => {
+          setWithdrawalAmount(new BigNumber(res).dividedBy(10 ** 18).toNumber());
         });
-      await btcContract.functions.balanceOf(btcStaking.address).then((res) => {
-        setPoolBitcoin(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-      });
-      await rockContract.functions.balanceOf(btcStaking.address).then((res) => {
-        setPoolRock(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-      });
-    };
+        await btcbDripContract.functions.unclaimedBTC(account).then((res) => {
+          setClaimableBitcoin(new BigNumber(res).dividedBy(10 ** 18).toNumber());
+        });
+      }
+    }
 
     fetchStakeData();
   }, [
     account,
-    api,
-    btcStaking.functions,
+    btcbDripContract.functions,
     btcContract.functions,
     rockContract.functions,
-    btcStaking.address,
+    btcbDripContract.address,
   ]);
 
+
   const stakeRock = async () => {
+    setIsModalOpen(true);
     setDepositState(`Staking ${depositAmount} ROCK`);
+    // alert("step 1 of 2")
     if (!depositAmount || depositAmount <= 0) {
       return;
     }
 
     try {
-      setDepositState(`Step 1 of 2: Approve ROCK spend`);
+      setDepositState(`Step 1 of 2: Approving ROCK spend...`);
+
       await rockContract.functions
         .approve(
-          btcStaking.address,
+          btcbDripContract.address,
           new BigNumber(depositAmount).multipliedBy(10 ** 18).toFixed()
         )
         .then(async (data) => {
+
           await data.wait();
-          setDepositState(`Step 2 of 2: Staking ROCK`);
-          await btcStaking.functions
+          setDepositState(`Step 2 of 2: Staking ROCK... please confirm transaction`);
+
+          await btcbDripContract.functions
             .stakeRock(
               new BigNumber(depositAmount).multipliedBy(10 ** 18).toFixed()
             )
             .then(async (data2) => {
+              setDepositState(`please wait for successful transaction confirmation`);
+              setDepositState(`Staking ROCK Successful!`);
               await data2.wait();
+
               window.location.href = "/earnbitcoin";
+              setIsModalOpen(false);
             });
         });
     } catch (error) {
@@ -230,6 +180,7 @@ function Tabs() {
     }
   };
 
+
   const withdrawRock = async () => {
     setWithdrawalState("Step 1 of 1: Withdrawing...");
     if (!withdrawalAmount || withdrawalAmount <= 0) {
@@ -237,12 +188,13 @@ function Tabs() {
       return;
     }
     try {
-      await btcStaking.functions
+      await btcbDripContract.functions
         .withdrawRock(
           new BigNumber(withdrawalAmount).multipliedBy(10 ** 18).toFixed()
         )
         .then(async (data) => {
           await data.wait();
+
         });
     } catch (error) {
       setWithdrawalState("Errored!");
@@ -250,16 +202,36 @@ function Tabs() {
     }
   };
 
+
   const claimBitcoin = async () => {
-    const res = await axios.get(
-      `https://api.pancakeswap.info/api/v2/tokens/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`
-    );
-    const bnbPriceUsd = parseInt(res.data.data.price);
 
     if (!claimableBitcoin || claimableBitcoin <= 0) {
       return;
     }
-    setClaimState(`Step 1 of 2: Sending gas fee...`);
+
+    setClaimState(`Step: Claiming Rock...`);
+
+    try {
+          await btcbDripContract.functions.claimBTCDrip().then(async (data2) => {
+            await data2.wait();
+          });
+    } catch (error) {
+          setWithdrawalState("Errored!");
+          console.log(error);
+    }
+  };
+
+  /* const claimRock = async () => {
+    const res = await axios.get(
+      `https://api.pancakeswap.info/api/v2/tokens/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`
+    );
+    const bnbPriceUsd = parseInt(res.data.data.price);
+
+    if (claimableRock <= 0) {
+      return;
+    }
+
+    setClaimState(`Step 1 of 2: Sending claim fee...`);
 
     const oneDollarBnb = new BigNumber(1).dividedBy(
       parseInt(bnbPriceUsd.toFixed())
@@ -274,104 +246,76 @@ function Tabs() {
       .sendTransaction(tx)
       .then(async (data) => {
         await data.wait();
-        setClaimState(`Step 2 of 2: Sending claim request...`);
+        setClaimState(`Step 2 of 2: Claiming Rock...`);
 
-        await axios
-          .post(`/api/postClaimBitcoin/`, {
-            wallet: account,
-            proof: data.hash,
-            value: oneDollarBnb,
-          })
-          .then((res) => {
-            if (!res || res.status !== 200) {
-              setClaimState(`Error: ${(res as any).message}`);
-              console.log(res);
-              return;
-            }
-          })
-          .catch((err) => {
-            setClaimState("An error occured while contacting server");
-            console.log(err);
+        try {
+          await btcbDripContract.functions.claimRock().then(async (data2) => {
+            await data2.wait();
           });
+        } catch (error) {
+          setWithdrawalState("Errored!");
+          console.log(error);
+        }
       });
-  };
+  }; */
 
 
   const claimRock = async () => {
-    const res = await axios.get(
-      `https://api.pancakeswap.info/api/v2/tokens/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`
-    );
-    const bnbPriceUsd = parseInt(res.data.data.price);
 
     if (claimableRock <= 0) {
       return;
     }
 
-    setClaimState(`Step 1 of 2: Sending claim fee...`);
+    setClaimState(`Step: Claiming Rock...`);
 
-    const oneDollarBnb = new BigNumber(1).dividedBy(
-      parseInt(bnbPriceUsd.toFixed())
-    );
-
-    const tx = {
-      to: modWallet,
-      value: ethers.utils.parseEther(oneDollarBnb.toFixed(10)),
-    };
-    library
-      .getSigner()
-      .sendTransaction(tx)
-      .then(async (data) => {
-        await data.wait();
-        setClaimState(`Step 2 of 2: Claiming Rock...`);
-
-        try {
-          await btcStaking.functions.claimRock().then(async (data2) => {
+    try {
+          await btcbDripContract.functions.claimRock().then(async (data2) => {
             await data2.wait();
           });
-        } catch (error) {
+    } catch (error) {
           setWithdrawalState("Errored!");
           console.log(error);
-        }
-      });
+    }
+
   };
 
-  const rollRock = async () => {
-    const res = await axios.get(
-      `https://api.pancakeswap.info/api/v2/tokens/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`
-    );
-    const bnbPriceUsd = parseInt(res.data.data.price);
-
+  const rockSlide = async () => {
     if (claimableRock <= 0) {
       return;
     }
 
-    setClaimState(`Step 1 of 2: Sending claim fee...`);
+    setClaimState(`Step: Sliding Rock...`);
 
-    const oneDollarBnb = new BigNumber(1).dividedBy(
-      parseInt(bnbPriceUsd.toFixed())
-    );
-
-    const tx = {
-      to: modWallet,
-      value: ethers.utils.parseEther(oneDollarBnb.toFixed(10)),
-    };
-    library
-      .getSigner()
-      .sendTransaction(tx)
-      .then(async (data) => {
-        await data.wait();
-        setClaimState(`Step 2 of 2: Claiming Rock...`);
-
-        try {
-          await btcStaking.functions.claimRock().then(async (data2) => {
+    try {
+          await btcbDripContract.functions.reInvestRock().then(async (data2) => {
             await data2.wait();
           });
-        } catch (error) {
+    } catch (error) {
           setWithdrawalState("Errored!");
           console.log(error);
-        }
-      });
+    }
   };
+
+  const setMax  = async () => {
+    setDepositAmount(userRockBalance);
+    setWithdrawalAmount(investedRock);
+    setIsMax(true);
+  };
+
+  // distributeBTCB among holders . can be called by anyone
+  const distributeBTCB = async () => {
+
+    try {
+          await btcbDripContract.functions.distributeBitcoin().then(async (data2) => {
+            await data2.wait();
+          });
+    } catch (error) {
+          setDistributeState("Errored!");
+          console.log(error);
+      }
+    };
+
+
 
 
   const [isClaim, setIsClaim] = useState(false);
@@ -389,6 +333,28 @@ function Tabs() {
 
   return (
     <>
+         <NewTabsSection>
+        <NewTabsContainer>
+
+          <NewTabsCardContainers>
+          {isModalOpen && (
+    <Card height="140px">
+     <div
+           style={{
+             display: "flex",
+             justifyContent: "center",
+             alignItems: "center",
+           }}
+         >
+           <h3 style={{color:"white", margin:"15px"}}>{depositState}</h3>
+         </div>
+     </Card>
+   )}
+
+          </NewTabsCardContainers>
+        </NewTabsContainer>
+      </NewTabsSection>
+
       <NewTabsSection>
         <NewTabsContainer>
           <NewTabsHeaderScrollContainer>
@@ -421,9 +387,19 @@ function Tabs() {
                   gap: "30px",
                 }}
               >
-                {(isClaim) && (
+                {(isClaim && TabsArray[activeTab] === "Claim Bitcoin") && (
                   <div>
-                    <h1 style={{ color: 'white' }}>0</h1>
+                    <h1 style={{ color: 'white' }}>{claimableBitcoin.toFixed(8)}</h1>
+                  </div>
+                )}
+                {(isClaim && TabsArray[activeTab] === "Claim Rock") && (
+                  <div>
+                    <h1 style={{ color: 'white' }}>{claimableRock.toFixed(2)}</h1>
+                  </div>
+                )}
+                {(isClaim && TabsArray[activeTab] === "Rock Slide") && (
+                  <div>
+                    <h1 style={{ color: 'white' }}>{claimableRock.toFixed(2)}</h1>
                   </div>
                 )}
                 {(!isClaim) && (
@@ -446,14 +422,26 @@ function Tabs() {
                       }}
                     >
                       <div>Enter Amount to {TabsArray[activeTab]}</div>
-                      <BalanceText>Balance: 4.75 ROCK</BalanceText>
+                      <BalanceText>Balance: {userRockBalance.toFixed(0)} ROCK</BalanceText>
                     </div>
                     <div>
-                      <InputField
+                    {!isMax && (
+                        <InputField
                         readonly={false}
                         type={"number"}
                         onChange={(ev) => setDepositAmount(parseInt(ev))}
                       />
+                    )}
+                      {(isMax && TabsArray[activeTab] === "Deposit") && (
+                       <div onChange={()=> setIsMax(false)}>
+                        <InputField  value ={String(userRockBalance)} />
+                        </div>
+                      )}
+                      {(isMax && TabsArray[activeTab] === "Withdraw") && (
+                        <div onChange={()=> setIsMax(false)}>
+                        <InputField value ={String(investedRock)} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -477,22 +465,65 @@ function Tabs() {
                         claimBitcoin();
                       } else if (TabsArray[activeTab] === "Claim Rock") {
                         claimRock();
-                      } else if (TabsArray[activeTab] === "Roll Rock") {
-                        rollRock();
+                      } else if (TabsArray[activeTab] === "Rock Slide") {
+                        rockSlide();
                       }
                     }}
                   >
                     {TabsArray[activeTab]}
                   </Button>
-                  {(!isClaim) && (
-                    <Button width="80px" position="static" outline>
-                      Max
-                    </Button>
+                  {!isClaim && (
+                      <Button  width="80px" position="static" outline style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        margin: "15px",
+                        padding: "20px"
+                      }}
+                      onClick={() => setMax()}
+                      >
+                        Max
+                      </Button>
                   )}
                 </div>
-                <BalanceTextMobile>Balance: 4.75 ROCK</BalanceTextMobile>
+                <BalanceTextMobile>Balance: {userRockBalance.toFixed(0)} ROCK</BalanceTextMobile>
               </div>
             </Card>
+
+          </NewTabsCardContainers>
+        </NewTabsContainer>
+      </NewTabsSection>
+
+      <NewTabsSection>
+        <NewTabsContainer>
+
+          <NewTabsCardContainers>
+            <Card height="140px">
+            <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Button
+                    width="280px" background="#EC8845"
+                   position="static" outline style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      margin: "40px",
+                      padding: "30px"}}
+
+                    onClick={() => {
+                      distributeBTCB();
+                    }}
+                  >
+                    Drip Bitcoin
+                  </Button>
+                </div>
+            </Card>
+
           </NewTabsCardContainers>
         </NewTabsContainer>
       </NewTabsSection>
