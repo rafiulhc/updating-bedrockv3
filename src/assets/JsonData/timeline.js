@@ -17,5 +17,9 @@ const timeline = [
     date: "May 7, 2022",
     title: "Launch of BTC Staking Pool",
   },
+    {
+    date: "Upcoming",
+    title: "Launch of New Website",
+  },
 ];
 export default timeline
