@@ -7,13 +7,15 @@ import BigNumber from "bignumber.js";
 import { useRouter } from "next/router";
 import useActiveWeb3React from "../../../hooks/useActiveWeb3React";
 import useMetamask from "../../../hooks/useMetaMask";
-
+import useTimer from "../../../hooks/useTimer";
+import useFetchdata from "../../../hooks/useFetchdata";
 import {
   useBitcoinStakingContract,
   useBtcbContract,
   useBedrockContract,
   useBtcbDripContract
 } from "../../../hooks/useContract";
+import { usePopper } from 'react-popper';
 
 const NewTabsSection = styled.div`
   display: grid;
@@ -88,68 +90,53 @@ const BalanceTextMobile = styled.div`
 `
 
 function Tabs() {
+  const [dripTime, setDripTime]  = useTimer();
+  const [
+    unclaimedBTCAmount, setUnclaimedBTCAmount, claimableRock, setClaimableRock, nextDripTime, setNextDripTime, claimableBitcoin,
+    setClaimableBitcoin, investedRock, setInvestedRock, poolBitcoin, setPoolBitcoin, poolRock, setPoolRock, userRockBalance,
+    setUserRockBalance, depositAmount, setDepositAmount, withdrawalAmount, setWithdrawalAmount, nextDripValue, setNextDripValue,
+     myPoolShare, setMyPoolShare, unclaimRockAmount, setUnclaimRockAmount, rockSlideCount, setRockSlideCount,
+    userShare, setUserShare, bitcoinInterval, setBitcoinInterval, totalPoolRock, setTotalPoolRock, bitcoinDripNextRelease,
+    setBitcoinDripNextRelease, fetchStakeData
+] = useFetchdata();
+  const [ currentTime, setCurrentTime ] = useState(Math.floor(new Date().getTime() / 1000));
+  const [referenceElement, setReferenceElement] = useState(null);
+  const [popperElement, setPopperElement] = useState(null);
+  const [arrowElement, setArrowElement] = useState(null);
+  const { styles, attributes } = usePopper(referenceElement, popperElement, {
+    modifiers: [{ name: 'arrow', options: { element: arrowElement } }],
+  });
+
   const TabsArray = ["Deposit", "Withdraw", "Claim Bitcoin", "Claim Rock", "Rock Slide"];
   const [activeTab, setActiveTab] = useState(0);
   const [claimState, setClaimState] = useState("");
-  const [claimableRock, setClaimableRock] = useState(0);
-  const [claimableBitcoin, setClaimableBitcoin] = useState(0);
-  const [investedRock, setInvestedRock] = useState(0);
-  const [userRockBalance, setUserRockBalance] = useState(0);
-  const [depositAmount, setDepositAmount] = useState(0);
-  const [depositState, setDepositState] = useState("");
-  const [withdrawalAmount, setWithdrawalAmount] = useState(0);
+
+  const [transactionState, setTransactionState] = useState("");
+
   const [withdrawalState, setWithdrawalState] = useState("");
   const [distributeState, setDistributeState] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [ isMax, setIsMax ] = useState(false);
   const { account } = useMetamask();
+
   const btcContract = useBtcbContract();
   const rockContract = useBedrockContract();
   const btcbDripContract = useBtcbDripContract();
   const router = useRouter();
 
 
-  useEffect(() => {
-    const fetchStakeData = async () => {
-      if (account) {
-        await btcbDripContract.functions.unclaimedRock(account).then((res) => {
-          setClaimableRock(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-        });
-        await btcbDripContract.functions.rockStakes(account).then((res) => {
-          setInvestedRock(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-        });
-        await rockContract.functions.balanceOf(account).then((res) => {
-          setUserRockBalance(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-        });
-        await btcbDripContract.functions.rockStakes(account).then((res) => {
-          setWithdrawalAmount(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-        });
-        await btcbDripContract.functions.unclaimedBTC(account).then((res) => {
-          setClaimableBitcoin(new BigNumber(res).dividedBy(10 ** 18).toNumber());
-        });
-      }
-    }
-
-    fetchStakeData();
-  }, [
-    account,
-    btcbDripContract.functions,
-    btcContract.functions,
-    rockContract.functions,
-    btcbDripContract.address,
-  ]);
-
 
   const stakeRock = async () => {
-    setIsModalOpen(true);
-    setDepositState(`Staking ${depositAmount} ROCK`);
+
     // alert("step 1 of 2")
     if (!depositAmount || depositAmount <= 0) {
       return;
     }
+    setIsModalOpen(true);
+    setTransactionState(`Staking ${depositAmount} ROCK`);
 
     try {
-      setDepositState(`Step 1 of 2: Approving ROCK spend...`);
+      setTransactionState(`Step 1 of 2: Approving ROCK spend...`);
 
       await rockContract.functions
         .approve(
@@ -159,32 +146,39 @@ function Tabs() {
         .then(async (data) => {
 
           await data.wait();
-          setDepositState(`Step 2 of 2: Staking ROCK... please confirm transaction`);
+          setTransactionState(`Step 2 of 2: Staking ROCK... please confirm transaction`);
 
           await btcbDripContract.functions
             .stakeRock(
               new BigNumber(depositAmount).multipliedBy(10 ** 18).toFixed()
             )
             .then(async (data2) => {
-              setDepositState(`please wait for successful transaction confirmation`);
-              setDepositState(`Staking ROCK Successful!`);
+              setTransactionState(`Please wait for transaction confirmation`);
               await data2.wait();
+              setTransactionState(`Staking ROCK Successful!`);
+              fetchStakeData();
+              setTimeout(() => {
+                setIsModalOpen(false);
+              }, 2000);
+              setDepositAmount(0);
+            // window.location.href = "/earnbitcoin";
 
-              window.location.href = "/earnbitcoin";
-              setIsModalOpen(false);
             });
         });
     } catch (error) {
-      setDepositState(`Errored!`);
-      console.log(error);
+      setTransactionState(`Errored!`);
+      setTimeout(() => {
+        setIsModalOpen(false);
+      }, 2000);
     }
   };
 
 
   const withdrawRock = async () => {
-    setWithdrawalState("Step 1 of 1: Withdrawing...");
+    setIsModalOpen(true);
+    setTransactionState(`ROCK Withdrawal in progress...`);
     if (!withdrawalAmount || withdrawalAmount <= 0) {
-      alert("No rock to withdraw")
+      alert("Please input correct amount to withdraw")
       return;
     }
     try {
@@ -194,16 +188,25 @@ function Tabs() {
         )
         .then(async (data) => {
           await data.wait();
-
+          setTransactionState(`ROCK Withdrawal Successful!`);
+          fetchStakeData();
+          setTimeout(() => {
+            setIsModalOpen(false);
+          }, 2000);
+          // setWithdrawalAmount(0);
         });
     } catch (error) {
-      setWithdrawalState("Errored!");
-      console.log(error);
+      setTransactionState(`Errored!`);
+      setTimeout(() => {
+        setIsModalOpen(false);
+      }, 2000);
     }
   };
 
 
   const claimBitcoin = async () => {
+    setIsModalOpen(true);
+    setTransactionState(`BTCB rewards Withdrawal in progress...`);
 
     if (!claimableBitcoin || claimableBitcoin <= 0) {
       return;
@@ -214,10 +217,18 @@ function Tabs() {
     try {
           await btcbDripContract.functions.claimBTCDrip().then(async (data2) => {
             await data2.wait();
+            setTransactionState(`BTCB rewards Withdrawal Successful!`);
+          fetchStakeData();
+          setTimeout(() => {
+            setIsModalOpen(false);
+          }, 2000);
+            fetchStakeData();
           });
     } catch (error) {
-          setWithdrawalState("Errored!");
-          console.log(error);
+      setTransactionState(`Errored! Please try again`);
+      setTimeout(() => {
+        setIsModalOpen(false);
+      }, 2000);
     }
   };
 
@@ -271,6 +282,7 @@ function Tabs() {
     try {
           await btcbDripContract.functions.claimRock().then(async (data2) => {
             await data2.wait();
+            fetchStakeData();
           });
     } catch (error) {
           setWithdrawalState("Errored!");
@@ -289,6 +301,7 @@ function Tabs() {
     try {
           await btcbDripContract.functions.reInvestRock().then(async (data2) => {
             await data2.wait();
+           fetchStakeData();
           });
     } catch (error) {
           setWithdrawalState("Errored!");
@@ -297,20 +310,37 @@ function Tabs() {
   };
 
   const setMax  = async () => {
-    setDepositAmount(userRockBalance);
-    setWithdrawalAmount(investedRock);
+    setDepositAmount(parseInt(userRockBalance.toFixed(2)));
+    setWithdrawalAmount(parseInt(investedRock.toFixed(2)));
     setIsMax(true);
   };
 
-  // distributeBTCB among holders . can be called by anyone
+  // distributeBTCB among holders. Can be called by anyone
   const distributeBTCB = async () => {
-
+    setIsModalOpen(true);
+    setTransactionState(`Please wait for the response from blockchain...`);
     try {
-          await btcbDripContract.functions.distributeBitcoin().then(async (data2) => {
-            await data2.wait();
+          await btcbDripContract.functions.distributeBitcoin().then(async (data) => {
+            await data.wait();
+
+            setTransactionState(`Successfully distributed BTCB`);
+
+            setTimeout(() => {
+              setIsModalOpen(false);
+            }, 2000);
+            fetchStakeData();
+            if(bitcoinDripNextRelease - currentTime <= 0){
+              setDripTime(0);
+            } else {
+              setDripTime(bitcoinDripNextRelease - currentTime)
+            }
           });
     } catch (error) {
-          setDistributeState("Errored!");
+      fetchStakeData();
+      setTransactionState(`Already distributed or not enough time passed`);
+      setTimeout(() => {
+        setIsModalOpen(false);
+      }, 4000);
           console.log(error);
       }
     };
@@ -333,32 +363,30 @@ function Tabs() {
 
   return (
     <>
-         <NewTabsSection>
-        <NewTabsContainer>
-
-          <NewTabsCardContainers>
+    <NewTabsSection>
+      <NewTabsContainer>
+        <NewTabsCardContainers>
           {isModalOpen && (
-    <Card height="140px">
-     <div
-           style={{
-             display: "flex",
-             justifyContent: "center",
-             alignItems: "center",
-           }}
-         >
-           <h3 style={{color:"white", margin:"15px"}}>{depositState}</h3>
-         </div>
-     </Card>
-   )}
+            <Card height="120px">
+            <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <h3 style={{color:"white", margin:"15px"}}>{transactionState}</h3>
+                </div>
+            </Card>
+          )}
+        </NewTabsCardContainers>
+      </NewTabsContainer>
+    </NewTabsSection>
 
-          </NewTabsCardContainers>
-        </NewTabsContainer>
-      </NewTabsSection>
-
-      <NewTabsSection>
-        <NewTabsContainer>
-          <NewTabsHeaderScrollContainer>
-            <NewTabsHeader>
+      <NewTabsSection >
+        <NewTabsContainer >
+          <NewTabsHeaderScrollContainer ref={setReferenceElement}>
+            <NewTabsHeader >
               {TabsArray.map((val, index) => (
                 <NewTabsLink
                   selected={TabsArray[activeTab] === val}
@@ -389,7 +417,7 @@ function Tabs() {
               >
                 {(isClaim && TabsArray[activeTab] === "Claim Bitcoin") && (
                   <div>
-                    <h1 style={{ color: 'white' }}>{claimableBitcoin.toFixed(8)}</h1>
+                    <h1 style={{ color: 'white' }}>{claimableBitcoin.toFixed(7)}</h1>
                   </div>
                 )}
                 {(isClaim && TabsArray[activeTab] === "Claim Rock") && (
@@ -398,7 +426,7 @@ function Tabs() {
                   </div>
                 )}
                 {(isClaim && TabsArray[activeTab] === "Rock Slide") && (
-                  <div>
+                  <div >
                     <h1 style={{ color: 'white' }}>{claimableRock.toFixed(2)}</h1>
                   </div>
                 )}
@@ -422,26 +450,34 @@ function Tabs() {
                       }}
                     >
                       <div>Enter Amount to {TabsArray[activeTab]}</div>
-                      <BalanceText>Balance: {userRockBalance.toFixed(0)} ROCK</BalanceText>
+                      {(TabsArray[activeTab] === "Withdraw") ? <BalanceText>Stakes: {investedRock.toFixed(2)} ROCK</BalanceText> :
+                       <BalanceText>Balance: {userRockBalance.toFixed(2)} ROCK</BalanceText>}
                     </div>
                     <div>
-                    {!isMax && (
+                    {(!isMax && TabsArray[activeTab] === "Deposit") && (
                         <InputField
                         readonly={false}
                         type={"number"}
                         onChange={(ev) => setDepositAmount(parseInt(ev))}
                       />
                     )}
-                      {(isMax && TabsArray[activeTab] === "Deposit") && (
+                    {(!isMax && TabsArray[activeTab] === "Withdraw") && (
+                        <InputField
+                        readonly={false}
+                        type={"number"}
+                        onChange={(ev) => setWithdrawalAmount(parseInt(ev))}
+                      />
+                    )}
+                    {(isMax && TabsArray[activeTab] === "Deposit") && (
                        <div onChange={()=> setIsMax(false)}>
-                        <InputField  value ={String(userRockBalance)} />
+                        <InputField  value ={String(userRockBalance.toFixed(2))} />
                         </div>
-                      )}
-                      {(isMax && TabsArray[activeTab] === "Withdraw") && (
+                    )}
+                    {(isMax && TabsArray[activeTab] === "Withdraw") && (
                         <div onChange={()=> setIsMax(false)}>
-                        <InputField value ={String(investedRock)} />
+                        <InputField value ={String(investedRock.toFixed(2))} />
                         </div>
-                      )}
+                    )}
                     </div>
                   </div>
                 )}
@@ -473,7 +509,8 @@ function Tabs() {
                     {TabsArray[activeTab]}
                   </Button>
                   {!isClaim && (
-                      <Button  width="80px" position="static" outline style={{
+
+                      <Button width="80px" position="static" outline style={{
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
@@ -485,8 +522,12 @@ function Tabs() {
                         Max
                       </Button>
                   )}
+                  <div ref={setPopperElement} style={styles.popper} {...attributes.popper}>
+        <h5 style={{color:"#E98331"}}>Compound (Rock Slide) unclaimed Rock to earn more BTC & Rock</h5>
+        <div ref={setArrowElement} style={styles.arrow} />
+      </div>
                 </div>
-                <BalanceTextMobile>Balance: {userRockBalance.toFixed(0)} ROCK</BalanceTextMobile>
+                <BalanceTextMobile>Balance: {userRockBalance.toFixed(2)} ROCK</BalanceTextMobile>
               </div>
             </Card>
 
