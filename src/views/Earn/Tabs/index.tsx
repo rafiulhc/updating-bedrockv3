@@ -217,7 +217,7 @@ function Tabs() {
     try {
           await btcbDripContract.functions.claimBTCDrip().then(async (data2) => {
             await data2.wait();
-            setTransactionState(`BTCB rewards Withdrawal Successful!`);
+            setTransactionState(`BTCB rewards withdrawal Successful!`);
           fetchStakeData();
           setTimeout(() => {
             setIsModalOpen(false);
@@ -272,40 +272,51 @@ function Tabs() {
 
 
   const claimRock = async () => {
-
+    setIsModalOpen(true);
+    setTransactionState(`ROCK rewards Withdrawal in progress...`);
     if (claimableRock <= 0) {
       return;
     }
 
-    setClaimState(`Step: Claiming Rock...`);
-
     try {
           await btcbDripContract.functions.claimRock().then(async (data2) => {
             await data2.wait();
+            setTransactionState(`ROCK rewards Withdrawal Successful`);
+            setTimeout(() => {
+              setIsModalOpen(false);
+            }, 3000);
             fetchStakeData();
           });
     } catch (error) {
           setWithdrawalState("Errored!");
-          console.log(error);
+          setTimeout(() => {
+            setIsModalOpen(false);
+          }, 3000);
     }
 
   };
 
   const rockSlide = async () => {
+    setIsModalOpen(true);
+    setTransactionState(`ROCK Slide in progress...`);
     if (claimableRock <= 0) {
       return;
     }
 
-    setClaimState(`Step: Sliding Rock...`);
-
     try {
           await btcbDripContract.functions.reInvestRock().then(async (data2) => {
             await data2.wait();
+            setTransactionState(`ROCK Slide successful!`);
+            setTimeout(() => {
+              setIsModalOpen(false);
+            }, 2000);
            fetchStakeData();
           });
     } catch (error) {
-          setWithdrawalState("Errored!");
-          console.log(error);
+      setTransactionState(`Errored!`);
+      setTimeout(() => {
+        setIsModalOpen(false);
+      }, 2000);
     }
   };
 
