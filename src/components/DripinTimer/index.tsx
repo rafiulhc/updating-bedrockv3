@@ -14,54 +14,31 @@ import useMetaMask from "../../hooks/useMetaMask";
 import axios from "axios";
 import styled from "styled-components";
 import TimerHead from "./TimerHead";
+import useTimer from "../../hooks/useTimer";
+import useFetchdata from "../../hooks/useFetchdata";
+import Button from "../Button";
 
 function DripinTimer() {
-  const { connect, disconnect, isActive, account, isProvider } = useMetaMask();
-
-  const [dripTime, setDripTime] = useState(null);
-  const [check, setCheck] = useState(false);
 
   const { width } = useWindowSize();
-
-  useEffect(() => {
-    let myInterval: NodeJS.Timer | null = null;
-    if (dripTime) {
-      const timer = () => {
-        setDripTime((n) => n - 1);
-      };
-      myInterval = setInterval(timer, 1000);
-    }
-    return () => {
-      clearInterval(myInterval);
-    };
-  }, [dripTime]);
-
-  useEffect(() => {
-    const getDripTime = async () => {
-      await axios
-        .get(`http://localhost:3000/api/getBitcoinRewards`)
-        .then((response) => {
-          if (response && response.status === 201) {
-            if (response.data.nextRelease) {
-              console.log(response.data.nextRelease);
-
-              setDripTime(
-                Math.ceil((response.data.nextRelease - Date.now()) / 1000)
-              );
-            } else {
-            }
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    };
-    getDripTime();
-  }, []);
+  const [dripTime, setDripTime]  = useTimer();
+  const [ currentTime, setCurrentTime ] = useState();
+  const [
+    unclaimedBTCAmount, setUnclaimedBTCAmount, claimableRock, setClaimableRock, nextDripTime, setNextDripTime, claimableBitcoin,
+    setClaimableBitcoin, investedRock, setInvestedRock, poolBitcoin, setPoolBitcoin, poolRock, setPoolRock, userRockBalance,
+    setUserRockBalance, depositAmount, setDepositAmount, withdrawalAmount, setWithdrawalAmount, nextDripValue, setNextDripValue,
+     myPoolShare, setMyPoolShare, unclaimRockAmount, setUnclaimRockAmount, rockSlideCount, setRockSlideCount,
+    userShare, setUserShare, bitcoinInterval, setBitcoinInterval, totalPoolRock, setTotalPoolRock, bitcoinDripNextRelease,
+    setBitcoinDripNextRelease, fetchStakeData
+] = useFetchdata();
 
   const secondsToHours = (seconds) => {
     if (seconds <= 0) {
-      return "";
+      if (bitcoinDripNextRelease > (Math.floor(new Date().getTime() / 1000))){
+        setDripTime(bitcoinDripNextRelease - (Math.floor(new Date().getTime() / 1000)))
+      }else{
+        setDripTime(0)
+      }
     }
     let timeLeft = "";
     let mutableSeconds = seconds;
@@ -81,33 +58,10 @@ function DripinTimer() {
       <TimerHeader>
         <Timer>
           <TimerHead>Bitcoin is dripping in</TimerHead>
+
           <br />
           <TimerRow>
-            <TimeWrap>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Number marginRight="10px">
-                  {dripTime !== null &&
-                  secondsToHours(dripTime).split(" ")[1].split("")[1]
-                    ? secondsToHours(dripTime).split(" ")[1].split("")[0]
-                    : 0}
-                </Number>
-                <Number marginRight="15px">
-                  {dripTime !== null &&
-                  secondsToHours(dripTime).split(" ")[1].split("")[1]
-                    ? secondsToHours(dripTime).split(" ")[1].split("")[1]
-                    : 0}
-                </Number>
-                :
-              </div>
 
-              <Measure>Days</Measure>
-            </TimeWrap>
 
             <TimeWrap>
               <div
@@ -127,7 +81,7 @@ function DripinTimer() {
                   {dripTime !== null &&
                   secondsToHours(dripTime).split(" ")[2].split("")[1]
                     ? secondsToHours(dripTime).split(" ")[2].split("")[1]
-                    : 0}
+                    : secondsToHours(dripTime).split(" ")[2].split("")[0]}
                 </Number>
                 :
               </div>
@@ -154,7 +108,7 @@ function DripinTimer() {
                   {dripTime !== null &&
                   secondsToHours(dripTime).split(" ")[3].split("")[1]
                     ? secondsToHours(dripTime).split(" ")[3].split("")[1]
-                    : 0}
+                    : secondsToHours(dripTime).split(" ")[3].split("")[0]}
                 </Number>
                 :
               </div>
@@ -179,7 +133,8 @@ function DripinTimer() {
                   {dripTime !== null &&
                   secondsToHours(dripTime).split(" ")[4].split("")[1]
                     ? secondsToHours(dripTime).split(" ")[4].split("")[1]
-                    : 0}
+                    : secondsToHours(dripTime).split(" ")[4].split("")[0]
+                    }
                 </Number>
               </div>
 
