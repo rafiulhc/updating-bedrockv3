@@ -11,7 +11,7 @@ const HeroSection = styled.div`
 const HeroContentContainer = styled.div`
     display: flex;
     gap: 10px;
-    
+
     &>div {
         flex: 1 1 100%;
     }
@@ -59,7 +59,7 @@ export const Hero: React.FC<HeroProps> = ({onClickReferalLink}: HeroProps) => {
             <HeroContentContainer>
                 <HeroContent>
                     <HeroContentTitle>Staking</HeroContentTitle>
-                    <HeroContentText>Refer and get up to 5% free rewards when they stake for more than 6 months!</HeroContentText>
+                   {/*<HeroContentText>Refer and get up to 5% free rewards when they stake for more than 6 months!</HeroContentText>*/}
                     <Button  position="static" outline onClick={() => onClickReferalLink()}>Copy Referal Link</Button>
                 </HeroContent>
                 <HeroImageContainer>
