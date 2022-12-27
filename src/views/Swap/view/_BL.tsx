@@ -14,18 +14,18 @@ export interface Coin {
 export type Field = "1" | "2";
 
 export const coins: Coin[] = [
-    {
-    symbol: "BNB",
-    name: "Binance",
-    img: "https://seeklogo.com/images/B/binance-coin-bnb-logo-CD94CC6D31-seeklogo.com.png?v=637697418070000000",
-    address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-    decimals: 18,
-  },
   {
     symbol: "ROCK",
     name: "Bedrock",
     img: "https://s2.coinmarketcap.com/static/img/coins/200x200/15842.png",
     address: "0xC3387E4285e9F80A7cFDf02B4ac6cdF2476A528A",
+    decimals: 18,
+  },
+  {
+    symbol: "BNB",
+    name: "Binance",
+    img: "https://seeklogo.com/images/B/binance-coin-bnb-logo-CD94CC6D31-seeklogo.com.png?v=637697418070000000",
+    address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
     decimals: 18,
   },
   {
