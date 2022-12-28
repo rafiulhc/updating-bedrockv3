@@ -4,6 +4,9 @@ import Footer from "../../../components/Footer/index";
 import Navbar from "../../../components/Navbar/index";
 import useMetaMask from "../../../hooks/useMetaMask";
 import { ethers } from "ethers";
+import axios from "axios";
+import { EvmChain } from '@moralisweb3/evm-utils';
+import BigNumber from "bignumber.js";
 import {
   SectionMargin,
   Title,
@@ -11,21 +14,17 @@ import {
   InputField,
   Select,
   SwapButton,
-  Blob1,
-  Blob2,
-  Blob2Corner,
   Background,
 } from "../components/index";
 import { useBL, Field } from "./_BL";
-//let routerContractAddress = "0x31afae70bd54a826fee6568865bc80e2bbdc3403"; //testnet
 let routerContractAddress = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-//let factoryContractAddress = "0x0689B41b16400784D5D6d6f20Dc3A9aD422A78C2"; //testnet
 let factoryContractAddress = "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73";
 let pancakePairAddress: string;
 import PancakeRouterAbi from "../../../config/abi/PancakeRouter.json";
 import PancakeFactoryAbi from "../../../config/abi/PancakeFactory.json";
-import PancakePairAbi from "../../../config/abi/PancakePair.json";
 import ERC20_ABI from "../../../config/abi/erc20";
+import Moralis from "moralis";
+
 const InputFieldsContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -37,6 +36,8 @@ const InputFieldsContainer = styled.div`
 const SubmitButtonContainer = styled.div`
   display: flex;
   justify-content: center;
+  align-items: center;
+  flex-direction: column;
 `;
 
 const SubmitButton = styled.input`
@@ -48,6 +49,38 @@ const SubmitButton = styled.input`
   color: #ffffff;
   border: none;
   padding: 14px 37px;
+  witdh: auto;
+`;
+
+const MaxButton = styled.button`
+  border-radius: 60px;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 16.8px;
+  background-color: rgba(0, 0, 0, 0.1);
+  color: rgba(255, 255, 255, 0.75);
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  padding: 10px 24px;
+  transition: all 0.4s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+  }
+`;
+
+const BalanceText = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 10px;
+  color: white;
+  opacity: 0.55;
+
+  & > :nth-child(2) {
+    width: 100%;
+    text-align: right;
+  }
 `;
 
 const ContentContainer = styled.div`
@@ -56,36 +89,26 @@ const ContentContainer = styled.div`
   padding-bottom: 200px;
 `;
 
-const Blob2Container = styled.div`
-  z-index: -1;
-  position: absolute;
-  top: 0px;
-  left: 50%;
-  width: 900px;
-  filter: blur(270px);
+interface InvertProps {
+  onClick: () => void;
+}
 
-  @media (max-width: 768px) {
-    top: 250px;
-    width: 100%;
-    filter: blur(100px);
-  }
-`;
-
-const Blob1Container = styled.div`
-  z-index: -1;
-  position: absolute;
-  bottom: 0;
-  right: 50%;
-  width: 900px;
-  filter: blur(150px);
-
-  @media (max-width: 768px) {
-    width: 100%;
-    filter: blur(100px);
-    left: 0;
-    bottom: 200px;
-  }
-`;
+const Invert: React.FC<InvertProps> = ({ onClick }: InvertProps) => {
+  return (
+    <svg
+      onClick={() => onClick()}
+      viewBox="0 0 24 24"
+      width="24px"
+      xmlns="http://www.w3.org/2000/svg"
+      cursor="pointer"
+    >
+      <path
+        d="M12 6V7.79C12 8.24 12.54 8.46 12.85 8.14L15.64 5.35C15.84 5.15 15.84 4.84 15.64 4.64L12.85 1.85C12.54 1.54 12 1.76 12 2.21V4C7.58 4 4 7.58 4 12C4 13.04 4.2 14.04 4.57 14.95C4.84 15.62 5.7 15.8 6.21 15.29C6.48 15.02 6.59 14.61 6.44 14.25C6.15 13.56 6 12.79 6 12C6 8.69 8.69 6 12 6ZM17.79 8.71C17.52 8.98 17.41 9.4 17.56 9.75C17.84 10.45 18 11.21 18 12C18 15.31 15.31 18 12 18V16.21C12 15.76 11.46 15.54 11.15 15.86L8.36 18.65C8.16 18.85 8.16 19.16 8.36 19.36L11.15 22.15C11.46 22.46 12 22.24 12 21.8V20C16.42 20 20 16.42 20 12C20 10.96 19.8 9.96 19.43 9.05C19.16 8.38 18.3 8.2 17.79 8.71Z"
+        fill="#E98331"
+      ></path>
+    </svg>
+  );
+};
 
 interface SwapViewProps extends PropsWithChildren {}
 export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
@@ -95,19 +118,61 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
     React.useState<ethers.Contract | null>();
   const [factoryContract, setFactoryContract] =
     React.useState<ethers.Contract | null>();
-  const [pancakePairContract, setPancakePairContract] =
-    React.useState<ethers.Contract | null>();
-  const [reserve0, setReserve0] = React.useState<ethers.BigNumber>();
-  const [reserve1, setReserve1] = React.useState<ethers.BigNumber>();
-  const [reserve2, setReserve2] = React.useState<ethers.BigNumber>(
-    ethers.BigNumber.from(0)
-  );
-  const [reserve3, setReserve3] = React.useState<ethers.BigNumber>(
-    ethers.BigNumber.from(0)
-  );
   const [path, setPath] = useState<string[]>([""]);
+  const [balanceCoin1, setBalanceCoin1] = useState<string>("");
+  const [balanceCoin2, setBalanceCoin2] = useState<string>("");
+  const [field1, setField1] = useState<ethers.FixedNumber>(
+    ethers.FixedNumber.from(0)
+  );
+  const [field2, setField2] = useState<ethers.FixedNumber>(
+    ethers.FixedNumber.from(0)
+  );
+  const [showInverted, setShowInverted] = useState(true);
+  const [metamaskState, setMetamaskState] = useState("");
+  const [rockValue,setRockValue]=useState<any>(0)
+  const [platformFee, setPlatformFee] = useState<any>(0)
+  const [fieldOne, setFieldOne] = useState(0)
+  const [fieldTwo, setFieldTwo] = useState(0)
+  const [valueForRate, setValueForRate] = useState("")
+  useEffect(() => {
+    const getBNBValueOneUSD = async () => {
+      await Moralis.start({
+        apiKey: process.env.NEXT_PUBLIC_MORALIS_API_KEY,
+        // ...and any other configuration
+    });
+      let price = await Moralis.EvmApi.token.getTokenPrice({address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", chain: EvmChain.BSC})
+      const bnbPriceUsd = parseInt(price.result.usdPrice.toString());
+      const oneDollarBnb = 1/bnbPriceUsd
+      setPlatformFee(oneDollarBnb.toFixed(6))
+    }
 
-  const setReserves = async () => {
+    getBNBValueOneUSD();
+    getValueOne();
+    getValueTwo();
+  }, []);
+
+  const getValueOne = async () => {
+
+    let price = await Moralis.EvmApi.token.getTokenPrice({address: formContext.form.field1.coin.address, chain: EvmChain.BSC})
+    let PriceUsdOne = price.result.usdPrice
+    setFieldOne(PriceUsdOne)
+  }
+
+  const getValueTwo = async () => {
+
+    let price = await Moralis.EvmApi.token.getTokenPrice({address: formContext.form.field2.coin.address, chain: EvmChain.BSC})
+    let PriceUsdTwo = price.result.usdPrice
+    setFieldTwo(PriceUsdTwo)
+  }
+
+  const calculatePriceRateFieldOne = async (val: string) => {
+    formContext.form.field2.value = (Number(val) * fieldOne / fieldTwo).toString()
+  }
+  const calculatePriceRateFieldTwo = async (val: string) => {
+    formContext.form.field1.value = (Number(val) * fieldTwo / fieldOne).toString()
+  }
+
+  const setBalances = async () => {
     const signer = library.getSigner();
     let router = new ethers.Contract(
       routerContractAddress,
@@ -126,21 +191,10 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
 
   const getReserveValues = async (
     factory: ethers.Contract,
-    signer: ethers.Signer,
     token0: string,
     token1: string
   ) => {
-    let res0 = ethers.BigNumber.from(0),
-      res1 = ethers.BigNumber.from(0);
     pancakePairAddress = await factory.getPair(token0, token1);
-    let pancakePair = new ethers.Contract(
-      pancakePairAddress,
-      PancakePairAbi,
-      signer
-    );
-    setPancakePairContract(pancakePair);
-    [res0, res1] = await pancakePair.getReserves();
-    return [res0, res1];
   };
 
   const getPair = async (factory: ethers.Contract, signer: ethers.Signer) => {
@@ -148,20 +202,88 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
       formContext.form.field1.coin.address !==
       formContext.form.field2.coin.address
     ) {
-      let res0 = ethers.BigNumber.from(0),
-        res1 = ethers.BigNumber.from(0);
+      let coin1 = new ethers.Contract(
+        formContext.form.field1.coin.address,
+        ERC20_ABI,
+        signer
+      );
+      let coin2 = new ethers.Contract(
+        formContext.form.field2.coin.address,
+        ERC20_ABI,
+        signer
+      );
+      if (formContext.form.field1.coin.symbol === "BNB") {
+        setBalanceCoin1(
+          ethers.FixedNumber.from(await library.getBalance(account))
+            .divUnsafe(ethers.FixedNumber.from(ethers.utils.parseEther("1")))
+            .toString()
+        );
+        setBalanceCoin2(
+          ethers.FixedNumber.from((await coin2.balanceOf(account)).toString())
+            .divUnsafe(
+              formContext.form.field2.coin.decimals === 18
+                ? ethers.FixedNumber.from(
+                    ethers.utils.parseEther("1").toString()
+                  )
+                : ethers.FixedNumber.from(
+                    10 ** formContext.form.field2.coin.decimals
+                  )
+            )
+            .toString()
+        );
+      } else if (formContext.form.field2.coin.symbol === "BNB") {
+        setBalanceCoin1(
+          ethers.FixedNumber.from((await coin1.balanceOf(account)).toString())
+            .divUnsafe(
+              formContext.form.field1.coin.decimals === 18
+                ? ethers.FixedNumber.from(
+                    ethers.utils.parseEther("1").toString()
+                  )
+                : ethers.FixedNumber.from(
+                    10 ** formContext.form.field1.coin.decimals
+                  )
+            )
+            .toString()
+        );
+        setBalanceCoin2(
+          ethers.FixedNumber.from(await library.getBalance(account))
+            .divUnsafe(ethers.FixedNumber.from(ethers.utils.parseEther("1")))
+            .toString()
+        );
+      } else {
+        setBalanceCoin1(
+          ethers.FixedNumber.from((await coin1.balanceOf(account)).toString())
+            .divUnsafe(
+              formContext.form.field1.coin.decimals === 18
+                ? ethers.FixedNumber.from(
+                    ethers.utils.parseEther("1").toString()
+                  )
+                : ethers.FixedNumber.from(
+                    10 ** formContext.form.field1.coin.decimals
+                  )
+            )
+            .toString()
+        );
+        setBalanceCoin2(
+          ethers.FixedNumber.from((await coin2.balanceOf(account)).toString())
+            .divUnsafe(
+              formContext.form.field2.coin.decimals === 18
+                ? ethers.FixedNumber.from(
+                    ethers.utils.parseEther("1").toString()
+                  )
+                : ethers.FixedNumber.from(
+                    10 ** formContext.form.field2.coin.decimals
+                  )
+            )
+            .toString()
+        );
+      }
       try {
-        [res0, res1] = await getReserveValues(
+        await getReserveValues(
           factory,
-          signer,
           formContext.form.field1.coin.address,
           formContext.form.field2.coin.address
-          //coins[1].address
         );
-        setReserve0(res0);
-        setReserve1(res1);
-        setReserve2(ethers.BigNumber.from(0));
-        setReserve3(ethers.BigNumber.from(0));
         setPath([
           formContext.form.field1.coin.address,
           formContext.form.field2.coin.address,
@@ -169,54 +291,41 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
       } catch (e) {
         if (e.message.includes('data="0x"')) {
           try {
-            [res0, res1] = await getReserveValues(
+            await getReserveValues(
               factory,
-              signer,
               formContext.form.field1.coin.address,
-              coins[0].address
+              coins[1].address
             );
-            setReserve0(res0);
-            setReserve1(res1);
-            [res0, res1] = await getReserveValues(
+            await getReserveValues(
               factory,
-              signer,
-              coins[0].address,
+              coins[1].address,
               formContext.form.field2.coin.address
             );
-            setReserve2(res0);
-            setReserve3(res1);
             setPath([
               formContext.form.field1.coin.address,
-              coins[0].address,
+              coins[1].address,
               formContext.form.field2.coin.address,
             ]);
           } catch (e) {
             if (e.message.includes('data="0x"')) {
               try {
-                [res0, res1] = await getReserveValues(
+                await getReserveValues(
                   factory,
-                  signer,
                   formContext.form.field1.coin.address,
-                  coins[1].address
+                  coins[2].address
                 );
-                setReserve0(res0);
-                setReserve1(res1);
-                [res0, res1] = await getReserveValues(
+                await getReserveValues(
                   factory,
-                  signer,
-                  coins[1].address,
+                  coins[2].address,
                   formContext.form.field2.coin.address
                 );
-                setReserve2(res0);
-                setReserve3(res1);
                 setPath([
                   formContext.form.field1.coin.address,
-                  coins[1].address,
+                  coins[2].address,
                   formContext.form.field2.coin.address,
                 ]);
               } catch (e) {
                 if (e.message.includes('data="0x"')) {
-                  console.log("Failed to find path");
                 }
               }
             }
@@ -224,35 +333,6 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
         }
       }
     }
-  };
-
-  const amountCalc = (
-    val: ethers.FixedNumber,
-    reserveIn: ethers.BigNumber,
-    reserveOut: ethers.BigNumber,
-    decimals0: number,
-    decimals1: number
-  ) => {
-    let amountInWithFee: ethers.FixedNumber = val.mulUnsafe(
-      ethers.FixedNumber.from(9975)
-    );
-    let Decimals0 =
-      decimals0 === 18
-        ? ethers.FixedNumber.from(ethers.utils.parseEther("1"))
-        : ethers.FixedNumber.from(10 ** decimals0);
-    let Decimals1 =
-      decimals1 === 18
-        ? ethers.FixedNumber.from(ethers.utils.parseEther("1"))
-        : ethers.FixedNumber.from(10 ** decimals1);
-    amountInWithFee = amountInWithFee.mulUnsafe(Decimals0);
-    let numerator: ethers.FixedNumber = amountInWithFee.mulUnsafe(
-      ethers.FixedNumber.from(reserveOut)
-    );
-    let denominator = ethers.FixedNumber.from(reserveIn)
-      .mulUnsafe(ethers.FixedNumber.from(10000))
-      .addUnsafe(amountInWithFee);
-    let amountOut = numerator.divUnsafe(denominator).divUnsafe(Decimals1);
-    return amountOut;
   };
 
   const swapTokens = async () => {
@@ -263,71 +343,129 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
       ethers.FixedNumber.from(formContext.form.field1.value) >
         ethers.FixedNumber.from(0)
     ) {
-      let amountToSwap =
-        formContext.form.field1.coin.decimals === 18
-          ? ethers.utils.parseEther(formContext.form.field1.value)
-          : ethers.FixedNumber.from(formContext.form.field1.value).mulUnsafe(
-              ethers.FixedNumber.from(
-                10 ** formContext.form.field1.coin.decimals
-              )
-            );
-      if (formContext.form.field1.coin.address === coins[2].address) {
-        let tx = await routerContract.swapExactETHForTokens(
-          1,
-          path,
-          account,
-          Date.now() + 60 * 20,
-          {
-            value: ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
-          }
-        );
-        await tx.wait();
-      } else if (formContext.form.field2.coin.address === coins[2].address) {
-        let tokenContract = new ethers.Contract(
-          formContext.form.field1.coin.address,
-          ERC20_ABI,
-          library.getSigner()
-        );
+      try {
+        let amountToSwap =
+          formContext.form.field1.coin.decimals === 18
+            ? ethers.utils.parseEther(formContext.form.field1.value)
+            : ethers.FixedNumber.from(formContext.form.field1.value).mulUnsafe(
+                ethers.FixedNumber.from(
+                  10 ** formContext.form.field1.coin.decimals
+                )
+              );
+        if (formContext.form.field1.coin.address === coins[1].address) {
+          setMetamaskState("Step 1 of 2: Confirm platform fee");
 
-        let tx = await tokenContract.approve(
-          routerContract.address,
-          ethers.utils.parseUnits(amountToSwap.toString(), "wei")
-        );
-        await tx.wait();
-        tx = await routerContract.swapExactTokensForETH(
-          ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
-          1,
-          path,
-          account,
-          Date.now() + 60 * 20
-        );
-        await tx.wait();
-      } else {
-        let tokenContract = new ethers.Contract(
-          formContext.form.field1.coin.address,
-          ERC20_ABI,
-          library.getSigner()
-        );
+          let signer = library.getSigner();
+          let tx = await signer.sendTransaction({
+            to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
+            value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
+          })
+          // await tx.wait();
 
-        let tx = await tokenContract.approve(
-          routerContract.address,
-          ethers.utils.parseUnits(amountToSwap.toString(), "wei")
-        );
-        await tx.wait();
-        tx = await routerContract.swapExactTokensForTokens(
-          ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
-          1,
-          path,
-          account,
-          Date.now() + 60 * 20
-        );
-        await tx.wait();
+          setMetamaskState("Step 2 of 2: Confirm swap");
+          tx = await routerContract.swapExactETHForTokens(
+            1,
+            path,
+            account,
+            Date.now() + 60 * 20,
+            {
+              value: ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+            }
+          );
+          await tx.wait();
+          setTimeout(() => {
+            setMetamaskState("Swap transaction successfull");
+          }, 4000);
+
+          setMetamaskState("");
+
+
+        } else if (formContext.form.field2.coin.address === coins[1].address) {
+          setMetamaskState("Step 1 of 3: Confirm platform fee");
+          let signer = library.getSigner();
+          let tx = await signer.sendTransaction({
+            to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
+            value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
+          })
+          // await tx.wait();
+          setMetamaskState(
+            `Step 2 of 3: Allowing ${formContext.form.field1.coin.symbol} to swap`
+          );
+          let tokenContract = new ethers.Contract(
+            formContext.form.field1.coin.address,
+            ERC20_ABI,
+            library.getSigner()
+          );
+
+          tx = await tokenContract.approve(
+            routerContract.address,
+            ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+          );
+          await tx.wait();
+          setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+          tx = await routerContract.swapExactTokensForETH(
+            ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+            1,
+            path,
+            account,
+            Date.now() + 60 * 20
+          );
+          await tx.wait();
+          setTimeout(() => {
+            setMetamaskState("Swap transaction successfull");
+          }, 4000);
+
+          setMetamaskState("");
+        } else {
+          setMetamaskState("Step 1 of 3: Confirm platform fee");
+          let signer = library.getSigner();
+          let tx = await signer.sendTransaction({
+            to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
+            value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
+          })
+          // await tx.wait();
+          setMetamaskState(
+            `Step 2 of 3: Allowing ${formContext.form.field1.coin.symbol} to swap`
+          );
+          let tokenContract = new ethers.Contract(
+            formContext.form.field1.coin.address,
+            ERC20_ABI,
+            library.getSigner()
+          );
+
+          tx = await tokenContract.approve(
+            routerContract.address,
+            ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+          );
+          await tx.wait();
+          setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+          tx = await routerContract.swapExactTokensForTokens(
+            ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+            1,
+            path,
+            account,
+            Date.now() + 60 * 20
+          );
+          await tx.wait();
+          setTimeout(() => {
+            setMetamaskState("Swap transaction successfull");
+          }, 4000);
+
+          setMetamaskState("");
+
+        }
+        await getPair(factoryContract, library.getSigner());
+      } catch (e) {
+        setTimeout(() => {
+          setMetamaskState("Error");
+        }, 4000);
+        setMetamaskState("");
       }
-      await getPair(factoryContract, library.getSigner());
     }
+
   };
 
-  const setValue = (
+  const setValue = async (
     val: string,
     field: Field,
     decimals0: number,
@@ -335,123 +473,152 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
     decimals2: number = 0
   ) => {
     let index: number = val.indexOf(".");
-    let check: boolean = index >= 0 ? val.length - index < 20 : true;
-    if (
-      val !== "" &&
-      check &&
-      ethers.FixedNumber.from(val) > ethers.FixedNumber.from(0)
-    ) {
+    if (index === 0) {
+      val = "0".concat(val);
+      index = val.indexOf(".");
+    }
+    if (index !== -1)
+      val =
+        parseInt(val.substring(0, index)).toString() +
+        val.substring(index, val.length);
+    let check: boolean =
+      index >= 0 ? val.length - index < 20 && index <= 20 : val.length <= 20;
+    if (val !== "" && check && parseFloat(val) > 0) {
       let val0 = val;
-      if (index !== -1) val = val.substring(0, index + 5);
-      let reserveIn = reserve0,
-        reserveOut = reserve1,
-        val1: any;
-      if (decimals2 === 0) {
-        if (
-          formContext.form.field1.coin.address.toLocaleLowerCase() >
-          formContext.form.field2.coin.address.toLocaleLowerCase()
-        ) {
+      let val1: any;
+      let outValue;
+      try {
+        if (decimals2 === 0) {
           if (parseInt(field) === 1) {
-            reserveIn = reserve1;
-            reserveOut = reserve0;
+            let Value =
+              decimals0 === 18
+                ? ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(
+                      ethers.utils.parseEther("1").toString()
+                    )
+                  )
+                : ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(10 ** decimals0)
+                  );
+            setField1(ethers.FixedNumber.from(val));
+            [, val1] = await routerContract.getAmountsOut(
+              Value.toString().substring(0, Value.toString().length - 2),
+              path
+            );
+            outValue = ethers.FixedNumber.from(val1.toString()).divUnsafe(
+              decimals1 === 18
+                ? ethers.FixedNumber.from(ethers.utils.parseEther("1"))
+                : ethers.FixedNumber.from(10 ** decimals1)
+            );
+            setField2(outValue);
+          } else {
+            let Value =
+              decimals1 === 18
+                ? ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(
+                      ethers.utils.parseEther("1").toString()
+                    )
+                  )
+                : ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(10 ** decimals1)
+                  );
+            setField2(ethers.FixedNumber.from(val));
+            [, val1] = await routerContract.getAmountsOut(
+              Value.toString().substring(0, Value.toString().length - 2),
+              [path[1], path[0]]
+            );
+            outValue = ethers.FixedNumber.from(val1.toString()).divUnsafe(
+              decimals0 === 18
+                ? ethers.FixedNumber.from(ethers.utils.parseEther("1"))
+                : ethers.FixedNumber.from(10 ** decimals0)
+            );
+            setField1(outValue);
           }
         } else {
-          if (parseInt(field) === 2) {
-            reserveIn = reserve1;
-            reserveOut = reserve0;
+          if (parseInt(field) === 1) {
+            let Value =
+              decimals0 === 18
+                ? ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(
+                      ethers.utils.parseEther("1").toString()
+                    )
+                  )
+                : ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(10 ** decimals0)
+                  );
+            setField1(Value);
+            [, val1] = await routerContract.getAmountsOut(
+              Value.toString().substring(0, Value.toString().length - 2),
+              [path[0], path[1]]
+            );
+            [, val1] = await routerContract.getAmountsOut(val1, [
+              path[1],
+              path[2],
+            ]);
+            outValue = ethers.FixedNumber.from(val1.toString()).divUnsafe(
+              decimals1 === 18
+                ? ethers.FixedNumber.from(ethers.utils.parseEther("1"))
+                : ethers.FixedNumber.from(10 ** decimals1)
+            );
+            setField2(outValue);
+          } else {
+            let Value =
+              decimals1 === 18
+                ? ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(
+                      ethers.utils.parseEther("1").toString()
+                    )
+                  )
+                : ethers.FixedNumber.from(val).mulUnsafe(
+                    ethers.FixedNumber.from(10 ** decimals1)
+                  );
+            setField2(ethers.FixedNumber.from(val));
+            [, val1] = await routerContract.getAmountsOut(
+              Value.toString().substring(0, Value.toString().length - 2),
+              [path[2], path[1]]
+            );
+            [, val1] = await routerContract.getAmountsOut(val1, [
+              path[1],
+              path[0],
+            ]);
+            outValue = ethers.FixedNumber.from(val1.toString()).divUnsafe(
+              decimals0 === 18
+                ? ethers.FixedNumber.from(ethers.utils.parseEther("1"))
+                : ethers.FixedNumber.from(10 ** decimals0)
+            );
+            setField1(outValue);
           }
         }
-        val1 = amountCalc(
-          ethers.FixedNumber.from(val),
-          reserveIn,
-          reserveOut,
-          parseInt(field) === 1 ? decimals0 : decimals1,
-          parseInt(field) === 1 ? decimals1 : decimals0
-        );
         setVal(
           val0,
           field,
-          val1.toString().substring(0, val1.toString().indexOf(".") + 5)
+          outValue.toString().substring(0, outValue.toString().indexOf(".") + 5)
         );
-      } else {
-        val1 = amountCalc(
-          ethers.FixedNumber.from(val),
-          reserveIn,
-          reserveOut,
-          decimals0,
-          decimals2
-        );
-        if (
-          formContext.form.field1.coin.address.toLocaleLowerCase() >
-            coins[0].address.toLocaleLowerCase() &&
-          parseInt(field) === 1
-        ) {
-          reserveIn = reserve1;
-          reserveOut = reserve0;
-          val1 = amountCalc(
-            ethers.FixedNumber.from(val),
-            reserveIn,
-            reserveOut,
-            decimals0,
-            decimals2
-          );
-        } else if (parseInt(field) === 2) {
-          reserveIn = reserve2;
-          reserveOut = reserve3;
-          if (
-            formContext.form.field2.coin.address.toLocaleLowerCase() >
-            coins[0].address.toLocaleLowerCase()
-          ) {
-            reserveIn = reserve3;
-            reserveOut = reserve2;
-          }
-          val1 = amountCalc(
-            ethers.FixedNumber.from(val),
-            reserveIn,
-            reserveOut,
-            decimals1,
-            decimals0
-          );
-        }
-        reserveIn = reserve2;
-        reserveOut = reserve3;
-        val1 =
-          parseInt(val1.toString()) >= 1
-            ? ethers.FixedNumber.from(parseInt(val1.toString()))
-            : val1;
-        if (
-          coins[0].address.toLocaleLowerCase() >
-            formContext.form.field2.coin.address.toLocaleLowerCase() &&
-          parseInt(field) === 1
-        ) {
-          reserveIn = reserve3;
-          reserveOut = reserve2;
-        } else if (parseInt(field) === 2) {
-          (reserveIn = reserve0), (reserveOut = reserve1);
-          if (
-            coins[0].address.toLocaleLowerCase() >
-            formContext.form.field1.coin.address.toLocaleLowerCase()
-          ) {
-            reserveIn = reserve1;
-            reserveOut = reserve0;
-          }
-        }
-        val1 = amountCalc(
-          val1,
-          reserveIn,
-          reserveOut,
-          decimals2,
-          parseInt(field) === 1 ? decimals1 : decimals0
-        );
-        setVal(
-          val0,
-          field,
-          val1.toString().substring(0, val1.toString().indexOf(".") + 5)
-        );
+      } catch (e) {
+        console.log("Error ", e);
       }
     } else {
       setVal(val, field, "0");
     }
+  };
+
+  const maxPress = () => {
+    let balance =
+      formContext.form.field1.coin.symbol === "BNB"
+        ? parseFloat(balanceCoin1) - 0.01 > 0
+          ? (parseFloat(balanceCoin1) - 0.01).toString()
+          : ((parseFloat(balanceCoin1) - 0.01) * -1).toString()
+        : balanceCoin1;
+    let index = balance.indexOf(".");
+    if (index !== -1) {
+      balance = balance.substring(0, index + 19);
+    }
+    setValue(
+      balance,
+      "1",
+      formContext.form.field1.coin.decimals,
+      formContext.form.field2.coin.decimals
+    );
   };
 
   useEffect(() => {
@@ -461,7 +628,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
 
   React.useEffect(() => {
     if (account) {
-      setReserves();
+      setBalances();
     }
   }, [account]);
 
@@ -478,101 +645,152 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
     <div style={{ position: "relative", overflow: "hidden" }}>
       <Navbar />
       <ContentContainer>
-        <Background isMobile={isMobile} /> 
+        <Background isMobile={isMobile} />
         <SectionMargin
           style={{ marginTop: "0px", zIndex: 2, marginBottom: "-30px" }}
         >
-          <Title>Trade with Bedrock Finance</Title>
+         {/* <Title>Trade with Bedrock Finance</Title> */}
         </SectionMargin>
         <SectionMargin style={{ zIndex: 4 }}>
           <SwapForm onSubmit={(e) => e.preventDefault()}>
-            <InputFieldsContainer>
+            <InputFieldsContainer data-aos="fade-up">
               <div>
-                <Select
-                  field="1"
-                  coins={coins}
-                  defaultIndex={0}
-                  onSelection={(e) => {
-                    if (
-                      e.selection.address ===
-                      formContext.form.field2.coin.address
-                    ) {
-                      swap();
-                    } else {
-                      setCoin(e.selection, "1");
-                    }
-                  }}
-                ></Select>
-                <InputField
-                  readonly={account == null}
-                  type={"number"}
-                  value={formContext.form.field1.value}
-                  onChange={(val) => {
-                    if (reserve2 > ethers.BigNumber.from(0)) {
-                      setValue(
-                        val,
-                        "1",
-                        formContext.form.field1.coin.decimals,
-                        formContext.form.field2.coin.decimals,
-                        coins[0].decimals
-                      );
-                    } else {
-                      setValue(
-                        val,
-                        "1",
-                        formContext.form.field1.coin.decimals,
-                        formContext.form.field2.coin.decimals
-                      );
-                    }
-                  }}
-                />
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <Select
+                    field="1"
+                    coins={coins}
+                    defaultIndex={0}
+                    onSelection={(e) => {
+                      formContext.form.field1.value = "0"
+                      formContext.form.field2.value = "0"
+
+                      if (
+                        e.selection.address ===
+                        formContext.form.field2.coin.address
+                      ) {
+                        swap();
+                        getValueOne()
+                        getValueTwo()
+
+                        let temp = balanceCoin1;
+                        setBalanceCoin1(balanceCoin2);
+                        setBalanceCoin2(temp);
+                      } else {
+                        setCoin(e.selection, "1");
+                        getValueOne()
+                        getValueTwo()
+
+                      }
+                    }}
+                  ></Select>
+                  <BalanceText>
+                    <div>Balance: {balanceCoin1}</div>
+                  </BalanceText>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <InputField
+
+                    value={formContext.form.field1.value}
+                    onChange={(val) => {
+                      getValueOne()
+                      getValueTwo()
+                      calculatePriceRateFieldOne(val)
+                      formContext.form.field1.value = ((Number(val) * fieldOne / fieldTwo)/400*397).toFixed(8).toString()
+                      setVal(val, "1", formContext.form.field2.value)
+                      setValueForRate(val)
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: 0,
+                      bottom: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <MaxButton onClick={() => maxPress()}>Max</MaxButton>
+                  </div>
+                </div>
+                <BalanceText style={{marginLeft:"50px", display: "flex", justifyContent: "flex-start", color: "white" }}>BUSD: ${(Number(fieldOne)*Number(formContext.form.field1.value)).toFixed(2)}</ BalanceText>
               </div>
               <SwapButton
                 onPress={() => {
                   swap();
+                  let temp = balanceCoin1;
+                  setBalanceCoin1(balanceCoin2);
+                  setBalanceCoin2(temp);
                 }}
               ></SwapButton>
               <div>
-                <Select
-                  field="2"
-                  coins={coins}
-                  defaultIndex={1}
-                  onSelection={(e) => {
-                    if (
-                      e.selection.address ===
-                      formContext.form.field1.coin.address
-                    ) {
-                      swap();
-                    } else {
-                      setCoin(e.selection, "2");
-                    }
-                  }}
-                ></Select>
-                <InputField
-                  readonly={account == null}
-                  type={"number"}
-                  value={formContext.form.field2.value}
-                  onChange={(val) => {
-                    if (reserve2 > ethers.BigNumber.from(0)) {
-                      setValue(
-                        val,
-                        "2",
-                        formContext.form.field1.coin.decimals,
-                        formContext.form.field2.coin.decimals,
-                        coins[0].decimals
-                      );
-                    } else {
-                      setValue(
-                        val,
-                        "2",
-                        formContext.form.field1.coin.decimals,
-                        formContext.form.field2.coin.decimals
-                      );
-                    }
-                  }}
-                />
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <Select
+                    field="2"
+                    coins={coins}
+                    defaultIndex={1}
+                    onSelection={(e) => {
+                      formContext.form.field1.value = "0"
+                      formContext.form.field2.value = "0"
+                        getValueOne()
+                        getValueTwo()
+
+                      if (
+                        e.selection.address ===
+                        formContext.form.field1.coin.address
+                      ) {
+                        swap();
+
+                        let temp = balanceCoin1;
+                        setBalanceCoin1(balanceCoin2);
+                        setBalanceCoin2(temp);
+                      } else {
+                        getValueOne()
+                        getValueTwo()
+
+                        setCoin(e.selection, "2");
+                      }
+                    }}
+                  ></Select>
+                  <BalanceText>
+                    <div>Balance: {balanceCoin2}</div>
+                  </BalanceText>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <InputField
+
+                    type={"number"}
+                    value={formContext.form.field2.value}
+                    onChange={(val) => {
+                      getValueOne()
+                      getValueTwo()
+                      calculatePriceRateFieldTwo(val)
+                      formContext.form.field1.value = ((Number(val) * fieldTwo / fieldOne)/400*402).toFixed(8).toString()
+                      setVal(val, "2", formContext.form.field1.value)
+                      setValueForRate(val)
+                    }}
+                  />
+                </div>
+                <BalanceText style={{marginLeft:"50px", display: "flex", justifyContent: "flex-start", color: "white" }}>BUSD: ${(Number(fieldTwo)*Number(formContext.form.field2.value)).toFixed(2)}</ BalanceText>
               </div>
               <SubmitButtonContainer>
+                {metamaskState.length > 0 && (
+                  <span
+                    style={{
+                      color: "#FFFFFF",
+                      alignContent: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    {metamaskState}
+                  </span>
+                )}
+
                 <SubmitButton
                   onClick={swapTokens}
                   type={"submit"}
@@ -592,29 +810,39 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                 />
               </SubmitButtonContainer>
             </InputFieldsContainer>
-            {formContext.form.field1.value !== "" &&
-              formContext.form.field2.value !== "" &&
-              formContext.form.field1.value.length -
-                formContext.form.field1.value.indexOf(".") <
-                20 &&
-              formContext.form.field2.value.length -
-                formContext.form.field2.value.indexOf(".") <
-                20 &&
-              ethers.FixedNumber.from(formContext.form.field2.value) >
-                ethers.FixedNumber.from(0) && (
-                <span>
-                  Price $
-                  {parseFloat(
-                    ethers.FixedNumber.from(formContext.form.field1.value)
-                      .divUnsafe(
-                        ethers.FixedNumber.from(formContext.form.field2.value)
-                      )
-                      .toString()
-                  )}{" "}
-                  {formContext.form.field1.coin.symbol} per{" "}
-                  {formContext.form.field2.coin.symbol}
-                </span>
+            <span style={{ color: "#FFFFFF" }}>
+              {showInverted ? (
+                Number(formContext.form.field1.value) > 0 ? (
+                  <>
+                    <span>
+                      {`Price ${((fieldOne/fieldTwo)/400*397).toFixed(6)}
+                      ${formContext.form.field2.coin.symbol} per ${
+                        formContext.form.field1.coin.symbol
+                      }   `}
+                    </span>
+                    <Invert
+                      onClick={() => setShowInverted(!showInverted)}
+                    ></Invert>
+                  </>
+                ) : (
+                  ""
+                )
+              ) : Number(formContext.form.field2.value) > 0 ? (
+                <>
+                  <span>
+                    {`Price ${((fieldTwo/fieldOne)/400*397).toFixed(6)}
+                    ${formContext.form.field1.coin.symbol} per ${
+                      formContext.form.field2.coin.symbol
+                    }    `}
+                  </span>
+                  <Invert
+                    onClick={() => setShowInverted(!showInverted)}
+                  ></Invert>
+                </>
+              ) : (
+                ""
               )}
+            </span>
           </SwapForm>
         </SectionMargin>
       </ContentContainer>
