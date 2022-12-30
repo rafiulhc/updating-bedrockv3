@@ -98,13 +98,7 @@ export const coins: Coin[] = [
     address: "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
     decimals: 18,
   },
-  {
-    symbol: "Dot",
-    name: "Polkadot",
-    img: "https://s2.coinmarketcap.com/static/img/coins/64x64/6636.png",
-    address: "0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402",
-    decimals: 18,
-  },
+
 
 ];
 
