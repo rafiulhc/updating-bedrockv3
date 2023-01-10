@@ -40,16 +40,16 @@ function FooterSections() {
   return (
     <>
       {/* <div> */}
-      
+
         <AddressTop>
           <Image src="/images/footerLogo.png" alt="Footer Logo" width={180} height={60} />
 
           <Paragraph marginTop="30px">
-            © 2022 Bedrock finance, <br /> All rights reserved
+            © 2023 Bedrock finance, <br /> All rights reserved
           </Paragraph>
           <Paragraph>Disclaimer • Terms Of use</Paragraph>
         </AddressTop>
-      
+
 
       {
         width <= 768 && <FooterImage>
@@ -75,7 +75,7 @@ function FooterSections() {
       <Social >
         <SectionHeading textAlign="left">Social</SectionHeading>
         <Container>
-          
+
              <Row>
             <Col1 xs={6} md={6}>
               <img width={18} alt="Social Icon" src={`/images/Twitter.png`} />Twitter
@@ -92,7 +92,7 @@ function FooterSections() {
             <Col1 xs={6} md={6}>
               <img width={12} alt="Social Icon" src={`/images/Facebook.png`} />Facebook
             </Col1>
-            
+
           </Row>
         </Container>
       </Social>
@@ -107,7 +107,7 @@ function FooterSections() {
             // width="100px"
             width={width<=850 ? "70px" : width<=900 ? "80px" : width<=1100 ? "90px"  : width<=768 ?"110px":"100px"  }
 
-            
+
             marginRight="15px"
           >
             Subscribe
@@ -131,7 +131,7 @@ function FooterSections() {
           </Paragraph>
           <Paragraph>Disclaimer • Terms Of use</Paragraph>
         </AddressBottom>
-    
+
     </>
   )
 }
