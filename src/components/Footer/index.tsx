@@ -18,21 +18,15 @@ function Footer() {
   return (
     <>
       <FooterHeader width={width} >
-
         <FooterCharacter >
           <Image alt="Footer Rock" src={footerRock} />
         </FooterCharacter>
-       
-
       </FooterHeader>
       <FooterBottom width={width}>
 
-
-
-
-  <FooterBotCharacter>
+  {/*<FooterBotCharacter>
   <Image alt="Footer Rock" src={footerRock} />
-</FooterBotCharacter>
+  </FooterBotCharacter>*/}
 
 
 <LinksRow  >
