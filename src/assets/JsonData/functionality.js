@@ -3,7 +3,7 @@
 const functionality=[
     {
         title:"Projects for funding",
-        value:"500+"
+        value:"0"
     },
     {
         title:"Raised from Projects",
@@ -11,11 +11,11 @@ const functionality=[
     },
     {
         title:"Project Success rate",
-        value:"97.5%"
+        value:"100%"
     },
     {
         title:"Successful projects",
-        value:"52"
+        value:"8"
     }
 ]
 
