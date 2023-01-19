@@ -21,6 +21,7 @@ import ConnectBtn from './ConnectBtn'
 import useMetaMask from '../../hooks/useMetaMask'
 import axios from 'axios'
 import ResourceDropDown from '../ResourseDropDown'
+import EarnDropDown from './EarnDropDown'
 
 function Navbar() {
   const router = useRouter()
@@ -32,6 +33,7 @@ function Navbar() {
   const [rockValue, setRockValue] = useState<any>(0)
 
   const [showDropDown, setShowDropDown] = useState(false)
+  const [showDropDownEarn, setShowDropDownEarn] = useState(false)
 
   useEffect(() => {
     const getRockAddress = async () => {
@@ -61,7 +63,7 @@ function Navbar() {
         <UL display={navMobile ? 'flex' : 'none'}>
           <Li color={router.pathname == '/' ? '#E98331' : '#FFFFFF'}>
             <Link href='/'>
-              <a>Home</a>
+              <a style={{cursor:"pointer"}}>Home</a>
             </Link>
           </Li>
           <Li color={router.pathname == '/swap' ? '#E98331' : '#FFFFFF'}>
@@ -69,21 +71,19 @@ function Navbar() {
               <a>Swap</a>
             </Link>
           </Li>
-          <Li color={router.pathname == '/earnbitcoin' ? '#E98331' : '#FFFFFF'}>
-            <Link href='/earnbitcoin'>
-              <a>Earn Bitcoin</a>
-            </Link>
+          <Li
+            style={{ width: showDropDown && '70px', cursor: 'pointer' }}
+            onClick={() => setShowDropDownEarn(!showDropDownEarn)}>
+            Earn
+            {showDropDownEarn && <EarnDropDown />}
           </Li>
-          <Li color={router.pathname == '/projects' ? '#E98331' : '#FFFFFF'}>
+
+          {/*<Li color={router.pathname == '/projects' ? '#E98331' : '#FFFFFF'}>
             <Link href='/projects'>
               <a>Projects</a>
             </Link>
-          </Li>
-          <Li color={router.pathname == '/staking' ? '#E98331' : '#FFFFFF'}>
-            <Link href='/staking'>
-              <a>Stake Rock</a>
-            </Link>
-          </Li>
+          </Li>*/}
+
           {router.pathname == '/dashboard' && (
             <Li color={router.pathname == '/dashboard' ? '#E98331' : '#FFFFFF'}>
               <Link href='/dashboard'>
@@ -92,7 +92,7 @@ function Navbar() {
             </Li>
           )}
           <Li
-            style={{ width: showDropDown && '180px', cursor: 'pointer' }}
+            style={{ width: showDropDown && '70px', cursor: 'pointer' }}
             onClick={() => setShowDropDown(!showDropDown)}>
             Resources
             {showDropDown && <ResourceDropDown />}
