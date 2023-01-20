@@ -9,6 +9,8 @@ import useActiveWeb3React from "../../../hooks/useActiveWeb3React";
 import useMetamask from "../../../hooks/useMetaMask";
 import useTimer from "../../../hooks/useTimer";
 import useFetchdata from "../../../hooks/useFetchdata";
+import { EvmChain } from '@moralisweb3/evm-utils';
+import { ethers } from "ethers";
 import {
   useBitcoinStakingContract,
   useBtcbContract,
@@ -16,6 +18,8 @@ import {
   useBtcbDripContract
 } from "../../../hooks/useContract";
 import { usePopper } from 'react-popper';
+import Moralis from "moralis";
+
 
 const NewTabsSection = styled.div`
   display: grid;
@@ -91,6 +95,7 @@ const BalanceTextMobile = styled.div`
 
 function Tabs() {
   const [dripTime, setDripTime]  = useTimer();
+  const { library } = useMetamask();
   const [
     unclaimedBTCAmount, setUnclaimedBTCAmount, claimableRock, setClaimableRock, nextDripTime, setNextDripTime, claimableBitcoin,
     setClaimableBitcoin, investedRock, setInvestedRock, poolBitcoin, setPoolBitcoin, poolRock, setPoolRock, userRockBalance,
@@ -112,17 +117,44 @@ function Tabs() {
   const [claimState, setClaimState] = useState("");
 
   const [transactionState, setTransactionState] = useState("");
+  const [isBTCBDistributable, setIsBTCBDistributable] = useState(true);
 
   const [withdrawalState, setWithdrawalState] = useState("");
   const [distributeState, setDistributeState] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBTCBModalOpen, setIsBTCBModalOpen] = useState(false);
   const [ isMax, setIsMax ] = useState(false);
+  const [platformFee, setPlatformFee] = useState<any>(0)
   const { account } = useMetamask();
 
   const btcContract = useBtcbContract();
   const rockContract = useBedrockContract();
   const btcbDripContract = useBtcbDripContract();
   const router = useRouter();
+
+  useEffect(() => {
+    const getBNBValueOneUSD = async () => {
+      await Moralis.start({
+        apiKey: process.env.NEXT_PUBLIC_MORALIS_API_KEY,
+        // ...and any other configuration
+    });
+      let price = await Moralis.EvmApi.token.getTokenPrice({address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", chain: EvmChain.BSC})
+      const bnbPriceUsd = parseInt(price.result.usdPrice.toString());
+      const dollarBnb = 2.5/bnbPriceUsd
+      setPlatformFee(dollarBnb.toFixed(6))
+    }
+
+    getBNBValueOneUSD();
+
+  }, []);
+
+  const setBTCBdistributable = async () => {
+
+    setTimeout(() => {
+      setIsBTCBDistributable(true)
+      window.location.href = "/earnbitcoin"
+    }, 86410000 );
+  }
 
 
 
@@ -146,16 +178,16 @@ function Tabs() {
         .then(async (data) => {
 
           await data.wait();
-          setTransactionState(`Step 2 of 2: Staking ROCK... please confirm transaction`);
+          setTransactionState(`Step 2 of 2: Staking ROCK... please confirm the transaction`);
 
           await btcbDripContract.functions
             .stakeRock(
               new BigNumber(depositAmount).multipliedBy(10 ** 18).toFixed()
             )
             .then(async (data2) => {
-              setTransactionState(`Please wait for transaction confirmation`);
+              setTransactionState(`Please wait for the transaction confirmation`);
               await data2.wait();
-              setTransactionState(`Staking ROCK Successful!`);
+              setTransactionState(`Staking ROCK successful!`);
               fetchStakeData();
               setTimeout(() => {
                 setIsModalOpen(false);
@@ -176,7 +208,7 @@ function Tabs() {
 
   const withdrawRock = async () => {
     setIsModalOpen(true);
-    setTransactionState(`ROCK Withdrawal in progress...`);
+    setTransactionState(`ROCK withdrawal in progress...`);
     if (!withdrawalAmount || withdrawalAmount <= 0) {
       alert("Please input correct amount to withdraw")
       return;
@@ -188,7 +220,7 @@ function Tabs() {
         )
         .then(async (data) => {
           await data.wait();
-          setTransactionState(`ROCK Withdrawal Successful!`);
+          setTransactionState(`ROCK withdrawal successful!`);
           fetchStakeData();
           setTimeout(() => {
             setIsModalOpen(false);
@@ -206,7 +238,7 @@ function Tabs() {
 
   const claimBitcoin = async () => {
     setIsModalOpen(true);
-    setTransactionState(`BTCB rewards Withdrawal in progress...`);
+    setTransactionState(`BTCB rewards withdrawal in progress...`);
 
     if (!claimableBitcoin || claimableBitcoin <= 0) {
       return;
@@ -217,7 +249,7 @@ function Tabs() {
     try {
           await btcbDripContract.functions.claimBTCDrip().then(async (data2) => {
             await data2.wait();
-            setTransactionState(`BTCB rewards withdrawal Successful!`);
+            setTransactionState(`BTCB rewards withdrawal successful!`);
           fetchStakeData();
           setTimeout(() => {
             setIsModalOpen(false);
@@ -273,7 +305,7 @@ function Tabs() {
 
   const claimRock = async () => {
     setIsModalOpen(true);
-    setTransactionState(`ROCK rewards Withdrawal in progress...`);
+    setTransactionState(`ROCK rewards withdrawal in progress...`);
     if (claimableRock <= 0) {
       return;
     }
@@ -281,7 +313,7 @@ function Tabs() {
     try {
           await btcbDripContract.functions.claimRock().then(async (data2) => {
             await data2.wait();
-            setTransactionState(`ROCK rewards Withdrawal Successful`);
+            setTransactionState(`ROCK rewards withdrawal successful`);
             setTimeout(() => {
               setIsModalOpen(false);
             }, 3000);
@@ -328,31 +360,42 @@ function Tabs() {
 
   // distributeBTCB among holders. Can be called by anyone
   const distributeBTCB = async () => {
-    setIsModalOpen(true);
+    setIsBTCBModalOpen(true);
     setTransactionState(`Please wait for the response from blockchain...`);
     try {
-          await btcbDripContract.functions.distributeBitcoin().then(async (data) => {
+      let signer = library.getSigner();
+      /*let tx = await signer.sendTransaction({
+        to: "0x3dEaB2F412FF828fA849ECe784789cDf862328d7",
+        value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
+      })*/
+          await btcbDripContract.functions.distributeBitcoin({
+            gasLimit: 1000000
+          }).then(async (data) => {
             await data.wait();
 
             setTransactionState(`Successfully distributed BTCB`);
-
-            setTimeout(() => {
-              setIsModalOpen(false);
-            }, 2000);
+            setIsBTCBDistributable(false)
             fetchStakeData();
+            setBTCBdistributable()
             if(bitcoinDripNextRelease - currentTime <= 0){
               setDripTime(0);
             } else {
               setDripTime(bitcoinDripNextRelease - currentTime)
             }
+            setTimeout(() => {
+              setIsBTCBModalOpen(false);
+            }, 3000);
+
+
+
           });
     } catch (error) {
       fetchStakeData();
       setTransactionState(`Already distributed or not enough time passed`);
       setTimeout(() => {
-        setIsModalOpen(false);
+        setIsBTCBModalOpen(false);
       }, 4000);
-          console.log(error);
+
       }
     };
 
@@ -377,7 +420,7 @@ function Tabs() {
     <NewTabsSection>
       <NewTabsContainer>
         <NewTabsCardContainers>
-          {isModalOpen && (
+          {(isModalOpen && (TabsArray[activeTab] == "Deposit" || TabsArray[activeTab] == "Withdraw" || TabsArray[activeTab] == "Claim Bitcoin" || TabsArray[activeTab] == "Claim Rock")) && (
             <Card height="120px">
             <div
                   style={{
@@ -415,6 +458,10 @@ function Tabs() {
             </NewTabsHeader>
           </NewTabsHeaderScrollContainer>
           <NewTabsCardContainers>
+          <div  >
+        {TabsArray[activeTab] == "Rock Slide" && <h5 style={{color:"#E98331", textAlign:"center", justifyContent:"center"}}>Compound (Rock Slide) unclaimed Rock to earn more BTCB & Rock</h5>}
+        <div ref={setArrowElement} style={styles.arrow} />
+      </div>
             <Card height="280px">
               <div
                 style={{
@@ -428,7 +475,7 @@ function Tabs() {
               >
                 {(isClaim && TabsArray[activeTab] === "Claim Bitcoin") && (
                   <div>
-                    <h1 style={{ color: 'white' }}>{claimableBitcoin.toFixed(7)}</h1>
+                    <h1 style={{ color: 'white' }}>{claimableBitcoin.toFixed(9)}</h1>
                   </div>
                 )}
                 {(isClaim && TabsArray[activeTab] === "Claim Rock") && (
@@ -533,10 +580,7 @@ function Tabs() {
                         Max
                       </Button>
                   )}
-                  <div ref={setPopperElement} style={styles.popper} {...attributes.popper}>
-        <h5 style={{color:"#E98331"}}>Compound (Rock Slide) unclaimed Rock to earn more BTC & Rock</h5>
-        <div ref={setArrowElement} style={styles.arrow} />
-      </div>
+
                 </div>
                 <BalanceTextMobile>Balance: {userRockBalance.toFixed(2)} ROCK</BalanceTextMobile>
               </div>
@@ -548,7 +592,19 @@ function Tabs() {
 
       <NewTabsSection>
         <NewTabsContainer>
-
+        {isBTCBModalOpen && (
+            <Card height="120px">
+            <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <h3 style={{color:"white", margin:"15px"}}>{transactionState}</h3>
+                </div>
+            </Card>
+          )}
           <NewTabsCardContainers>
             <Card height="140px">
             <div
@@ -558,7 +614,27 @@ function Tabs() {
                     alignItems: "center",
                   }}
                 >
-                  <Button
+                  {
+                     isBTCBDistributable ? <Button
+                    width="280px" background={ bitcoinDripNextRelease - currentTime <= 0 ? "#391628" : "#EC8845"}
+
+                   position="static" outline style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      margin: "40px",
+                      padding: "30px"}}
+
+                      onClick={() => {
+                        if (bitcoinDripNextRelease - currentTime <= 0){
+                          distributeBTCB();
+                        }else {
+                          return
+                        }
+                      }}
+                  >
+                    Send out the BTCB!
+                  </Button> : <Button
                     width="280px" background="#EC8845"
                    position="static" outline style={{
                       display: "flex",
@@ -567,12 +643,10 @@ function Tabs() {
                       margin: "40px",
                       padding: "30px"}}
 
-                    onClick={() => {
-                      distributeBTCB();
-                    }}
                   >
-                    Drip Bitcoin
+                    Send out the BTCB!
                   </Button>
+                  }
                 </div>
             </Card>
 
