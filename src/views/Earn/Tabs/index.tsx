@@ -364,10 +364,10 @@ function Tabs() {
     setTransactionState(`Please wait for the response from blockchain...`);
     try {
       let signer = library.getSigner();
-      /*let tx = await signer.sendTransaction({
+      let tx = await signer.sendTransaction({
         to: "0x3dEaB2F412FF828fA849ECe784789cDf862328d7",
-        value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
-      })*/
+        value: ethers.utils.parseEther(platformFee) // $2.5 bnb
+      })
           await btcbDripContract.functions.distributeBitcoin({
             gasLimit: 1000000
           }).then(async (data) => {
@@ -616,7 +616,7 @@ function Tabs() {
                 >
                   {
                      isBTCBDistributable ? <Button
-                    width="280px" background={ bitcoinDripNextRelease - currentTime <= 0 ? "#391628" : "#EC8845"}
+                    width="280px" background={ bitcoinDripNextRelease - currentTime <= 0 ?  "#EC8845" : "#391628" }
 
                    position="static" outline style={{
                       display: "flex",
@@ -635,7 +635,7 @@ function Tabs() {
                   >
                     Send out the BTCB!
                   </Button> : <Button
-                    width="280px" background="#EC8845"
+                    width="280px" background="#391628"
                    position="static" outline style={{
                       display: "flex",
                       justifyContent: "center",
@@ -658,3 +658,4 @@ function Tabs() {
 }
 
 export default Tabs;
+
