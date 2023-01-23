@@ -35,6 +35,10 @@ function Navbar() {
   const [showDropDown, setShowDropDown] = useState(false)
   const [showDropDownEarn, setShowDropDownEarn] = useState(false)
 
+  const  isMobileDevice = () => {
+  return "ontouchstart" in window || "onmsgesturechange" in window;
+}
+
   useEffect(() => {
     const getRockAddress = async () => {
       try {
@@ -61,6 +65,21 @@ function Navbar() {
         bg={navMobile && '#EC8845'}>
         <Logo>{navMobile ? '' : <Image alt='Logo' src={logoImage} />}</Logo>
         <UL display={navMobile ? 'flex' : 'none'}>
+          {
+            navMobile && <Li>
+            <ConnectBtn
+        onClick={() => {
+                      if (isMobileDevice()) {
+                      window.open("https://metamask.app.link/dapp/latest-bedrock.vercel.app/");
+                       } else {
+                        window.open("https://metamask.io/", "_blank");
+                      }
+                    }}
+                  >
+                  Open Wallet Browser
+        </ConnectBtn>
+          </Li>
+          }
           <Li color={router.pathname == '/' ? '#E98331' : '#FFFFFF'}>
             <Link href='/'>
               <a style={{cursor:"pointer"}}>Home</a>
