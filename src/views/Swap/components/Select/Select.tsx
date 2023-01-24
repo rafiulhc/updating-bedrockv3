@@ -9,6 +9,7 @@ import {
   SelectOption,
   SelectOptionsContainer,
 } from "./_c_exports";
+import { InputFieldSearch } from "../InputField/InputFieldSearch";
 
 const SelectContainer = styled.div`
   position: relative;
@@ -31,6 +32,7 @@ export const Select: React.FC<SelectProps> = ({
   onSelection,
   field,
 }: SelectProps) => {
+  const [searchCoin, setSearchCoin] = React.useState("")
   const { menuRef, toggleMenu, hideMenu, formContext } = useBL({
     defaultSelection: coins[defaultIndex].symbol,
     selectionIndex: defaultIndex,
@@ -58,9 +60,20 @@ export const Select: React.FC<SelectProps> = ({
         },
       });
   };
-
+  const filteredData = coins.filter((el) => {
+    //if no input the return the original
+    if (searchCoin === '') {
+        return el;
+    }
+    //return the item which contains the user input
+    else {
+        return el.symbol.toLowerCase().includes(searchCoin) || el.symbol.toUpperCase().includes(searchCoin)
+    }
+})
+console.log(searchCoin)
   return (
     <SelectContainer>
+
       <SelectButton
         onClick={() => {
           toggleMenu();
@@ -79,8 +92,14 @@ export const Select: React.FC<SelectProps> = ({
         />
       </SelectButton>
       <SelectOptionsContainer ref={menuRef}>
-        {coins.map((coin, index) => (
-          <SelectOption
+      <div style={{margin: "10px"}}>
+        {/*<InputFieldSearch
+        onChange={(val)=>{setSearchCoin(val)}}
+      />*/}
+        </div>
+        {filteredData.map((coin, index) => (
+
+            <SelectOption
             key={index}
             onClick={() =>
               handleSelect(
@@ -96,7 +115,9 @@ export const Select: React.FC<SelectProps> = ({
             <img src={coin.img} height="30" width="30" />
             {coin.symbol}
           </SelectOption>
+
         ))}
+
       </SelectOptionsContainer>
     </SelectContainer>
   );
