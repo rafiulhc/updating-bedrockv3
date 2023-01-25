@@ -22,6 +22,7 @@ import useMetaMask from '../../hooks/useMetaMask'
 import axios from 'axios'
 import ResourceDropDown from '../ResourseDropDown'
 import EarnDropDown from './EarnDropDown'
+import Button from '../Button'
 
 function Navbar() {
   const router = useRouter()
@@ -34,11 +35,9 @@ function Navbar() {
 
   const [showDropDown, setShowDropDown] = useState(false)
   const [showDropDownEarn, setShowDropDownEarn] = useState(false)
-
   const  isMobileDevice = () => {
-  return "ontouchstart" in window || "onmsgesturechange" in window;
-}
-
+    return "ontouchstart" in window || "onmsgesturechange" in window;
+  }
   useEffect(() => {
     const getRockAddress = async () => {
       try {
@@ -55,6 +54,16 @@ function Navbar() {
     getRockAddress()
   }, [])
 
+{/*useEffect(()=>{
+  const api_url = "https://api.coingecko.com/api/v3/simple/price?ids=bedrock&vs_currencies=usd";
+async function getData() {
+    const response = await fetch(api_url);
+    const data = await response.json();
+    setRockValue((data.bedrock.usd).toFixed(4))
+}
+getData();
+},[])*/}
+
   return (
     <>
       {isProvider && <NoMetaMask />}
@@ -65,21 +74,43 @@ function Navbar() {
         bg={navMobile && '#EC8845'}>
         <Logo>{navMobile ? '' : <Image alt='Logo' src={logoImage} />}</Logo>
         <UL display={navMobile ? 'flex' : 'none'}>
-          {
+       {/* {
             navMobile && <Li>
             <ConnectBtn
-        onClick={() => {
+                   onClick={() => {
                       if (isMobileDevice()) {
-                      window.open("https://metamask.app.link/dapp/latest-bedrock.vercel.app/");
+                      window.open("https://metamask.app.link/dapp/updating-bedrockv3.vercel.app/");
                        } else {
                         window.open("https://metamask.io/", "_blank");
                       }
                     }}
                   >
-                  Open Wallet Browser
+                  Open Wallet
         </ConnectBtn>
           </Li>
           }
+        {
+            navMobile && <Li>
+            {!account ? (
+              <ConnectBtn background="#EC8845" onClick={
+              () => {
+                      connect()
+                      if (isMobileDevice()) {
+                      window.open("https://metamask.app.link/dapp/updating-bedrockv3.vercel.app/");
+                       } else {
+                        window.open("https://metamask.io/", "_blank");
+                      }
+                    }
+              }>
+                Connect
+              </ConnectBtn>
+            ) : (
+              <ConnectBtn background="#EC8845" onClick={disconnect}>
+                Disconnect
+              </ConnectBtn>
+            )}
+          </Li>
+          }*/}
           <Li color={router.pathname == '/' ? '#E98331' : '#FFFFFF'}>
             <Link href='/'>
               <a style={{cursor:"pointer"}}>Home</a>
