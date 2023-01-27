@@ -5,7 +5,7 @@ import Navbar from "../../../components/Navbar/index";
 import useMetaMask from "../../../hooks/useMetaMask";
 import { ethers } from "ethers";
 import axios from "axios";
-import { EvmChain } from '@moralisweb3/evm-utils';
+
 import BigNumber from "bignumber.js";
 import {
   SectionMargin,
@@ -25,6 +25,7 @@ import PancakeRouterAbi from "../../../config/abi/PancakeRouter.json";
 import PancakeFactoryAbi from "../../../config/abi/PancakeFactory.json";
 import ERC20_ABI from "../../../config/abi/erc20";
 import Moralis from "moralis";
+import { EvmChain } from '@moralisweb3/evm-utils';
 
 const InputFieldsContainer = styled.div`
   display: flex;
@@ -111,6 +112,9 @@ const Invert: React.FC<InvertProps> = ({ onClick }: InvertProps) => {
 };
 
 interface SwapViewProps extends PropsWithChildren {}
+
+
+
 export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
   const { coins, formContext, setVal, setCoin, swap, isMobile } = useBL();
   const { account, library } = useMetaMask();
@@ -128,7 +132,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
     ethers.FixedNumber.from(0)
   );
 
-  const [slippage, setSlippage] = useState("")
+  const [slippage, setSlippage] = useState("1")
   const [showInverted, setShowInverted] = useState(true);
   const [metamaskState, setMetamaskState] = useState("");
   const [platformFee, setPlatformFee] = useState<any>(0)
@@ -174,7 +178,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
   React.useEffect(()=>{
     setBalances()
   },[fieldOne, fieldTwo, formContext.form.field1.value, formContext.form.field2.value, formContext.form.field1.coin.address,
-    formContext.form.field2.coin.address, balanceCoin1, balanceCoin2, coins
+    formContext.form.field2.coin.address, balanceCoin1, balanceCoin2
     ])
 
   const calculatePriceRateFieldOne = async (val: string) => {
@@ -316,7 +320,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
             );
             setPath([
               formContext.form.field1.coin.address,
-              coins[1].address,
+              coins[0].address,
               formContext.form.field2.coin.address,
             ]);
           } catch (e) {
@@ -375,24 +379,25 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                 )
               );
               if ( formContext.form.field1.coin.address === coins[0].address && formContext.form.field2.coin.address === coins[1].address ) {
-                /* setMetamaskState("Step 1 of 2: Confirm platform fee");
+                setMetamaskState("Step 1 of 2: Confirm platform fee");
 
                 let signer = library.getSigner();
                 let tx = await signer.sendTransaction({
                   to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
                   value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
                 })
-                // await tx.wait(); */
+                // await tx.wait();
 
                   setMetamaskState("Step 2 of 2: Confirm swap");
-                  let tx = await routerContract.swapETHForExactTokens(
+                  if(Number(formContext.form.field2.value) < 10000){
+                    let tx = await routerContract.swapETHForExactTokens(
                   ethers.utils.parseUnits(amountToOut.toString(), "wei"),
                   path,
                   account,
                   Date.now() + 60 * 20,
                   {
                     value: ethers.utils.parseUnits((Number(amountToSwap)/100*(100 + Number(slippage))).toString(), "wei"),
-                    gasPrice: ethers.utils.parseUnits("10", "gwei")
+                    gasPrice: ethers.utils.parseUnits("20", "gwei")
                   }
                 );
                   await tx.wait();
@@ -402,20 +407,209 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                   setMetamaskState("Transaction successfull");
                   formContext.form.field1.value = "0"
                   formContext.form.field2.value = "0"
+                  } else if (Number(formContext.form.field2.value) < 100000) {
+                    let tx = await routerContract.swapETHForExactTokens(
+                      ethers.utils.parseUnits(amountToOut.toString(), "wei"),
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        value: ethers.utils.parseUnits((Number(amountToSwap)/100*(100 + Number(slippage))).toString(), "wei"),
+                        gasPrice: ethers.utils.parseUnits("30", "gwei")
+                      }
+                    );
+                      await tx.wait();
+                      setTimeout(() => {
+                        setMetamaskState("");
+                      }, 4000);
+                      setMetamaskState("Transaction successfull");
+                      formContext.form.field1.value = "0"
+                      formContext.form.field2.value = "0"
+                  } else if( Number(formContext.form.field2.value) < 1000000) {
+                    let tx = await routerContract.swapETHForExactTokens(
+                      ethers.utils.parseUnits(amountToOut.toString(), "wei"),
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        value: ethers.utils.parseUnits((Number(amountToSwap)/100*(100 + Number(slippage))).toString(), "wei"),
+                        gasPrice: ethers.utils.parseUnits("40", "gwei")
+                      }
+                    );
+                      await tx.wait();
+                      setTimeout(() => {
+                        setMetamaskState("");
+                      }, 4000);
+                      setMetamaskState("Transaction successfull");
+                      formContext.form.field1.value = "0"
+                      formContext.form.field2.value = "0"
+                  }else{
+                    let tx = await routerContract.swapETHForExactTokens(
+                      ethers.utils.parseUnits(amountToOut.toString(), "wei"),
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        value: ethers.utils.parseUnits((Number(amountToSwap)/100*(100 + Number(slippage))).toString(), "wei"),
+                        gasPrice: ethers.utils.parseUnits("60", "gwei")
+                      }
+                    );
+                      await tx.wait();
+                      setTimeout(() => {
+                        setMetamaskState("");
+                      }, 4000);
+                      setMetamaskState("Transaction successfull");
+                      formContext.form.field1.value = "0"
+                      formContext.form.field2.value = "0"
+                  }
               }
 
-        if (formContext.form.field1.coin.address === coins[0].address) {
-          /* setMetamaskState("Step 1 of 2: Confirm platform fee");
+        else if ( formContext.form.field1.coin.address === coins[1].address && formContext.form.field2.coin.address === coins[0].address ) {
+          setMetamaskState("Step 1 of 2: Confirm platform fee");
 
-          let signer = library.getSigner();
+                let signer = library.getSigner();
+                let tx = await signer.sendTransaction({
+                  to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
+                  value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
+                })
+                // await tx.wait();
+
+                  setMetamaskState("Step 2 of 2: Confirm swap");
+                  if(Number(formContext.form.field1.value) < 10000){
+                    let tokenContract = await new ethers.Contract(
+                      formContext.form.field1.coin.address,
+                      ERC20_ABI,
+                      library.getSigner()
+                    );
+
+                    tx = await tokenContract.approve(
+                      routerContract.address,
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+                    );
+                    await tx.wait();
+                    setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+                    tx = await routerContract.swapExactTokensForETH(
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+                      1,
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        gasPrice: ethers.utils.parseUnits("20", "gwei")
+                      }
+                    );
+                    await tx.wait();
+                    setTimeout(() => {
+                      setMetamaskState("");
+                    }, 4000);
+                    setMetamaskState("Transaction successful");
+                    formContext.form.field1.value = "0"
+                    formContext.form.field2.value = "0"
+                  } else if (Number(formContext.form.field1.value) < 100000) {
+                    let tokenContract = await new ethers.Contract(
+                      formContext.form.field1.coin.address,
+                      ERC20_ABI,
+                      library.getSigner()
+                    );
+
+                    tx = await tokenContract.approve(
+                      routerContract.address,
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+                    );
+                    await tx.wait();
+                    setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+                    tx = await routerContract.swapExactTokensForETH(
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+                      1,
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        gasPrice: ethers.utils.parseUnits("30", "gwei")
+                      }
+                    );
+                    await tx.wait();
+                    setTimeout(() => {
+                      setMetamaskState("");
+                    }, 4000);
+                    setMetamaskState("Transaction successful");
+                    formContext.form.field1.value = "0"
+                    formContext.form.field2.value = "0"
+                  } else if( Number(formContext.form.field1.value) < 1000000) {
+                    let tokenContract = await new ethers.Contract(
+                      formContext.form.field1.coin.address,
+                      ERC20_ABI,
+                      library.getSigner()
+                    );
+
+                    tx = await tokenContract.approve(
+                      routerContract.address,
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+                    );
+                    await tx.wait();
+                    setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+                    tx = await routerContract.swapExactTokensForETH(
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+                      1,
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        gasPrice: ethers.utils.parseUnits("40", "gwei")
+                      }
+                    );
+                    await tx.wait();
+                    setTimeout(() => {
+                      setMetamaskState("");
+                    }, 4000);
+                    setMetamaskState("Transaction successful");
+                    formContext.form.field1.value = "0"
+                    formContext.form.field2.value = "0"
+                  }else{
+                    let tokenContract = await new ethers.Contract(
+                      formContext.form.field1.coin.address,
+                      ERC20_ABI,
+                      library.getSigner()
+                    );
+
+                    tx = await tokenContract.approve(
+                      routerContract.address,
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+                    );
+                    await tx.wait();
+                    setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+                    tx = await routerContract.swapExactTokensForETH(
+                      ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+                      1,
+                      path,
+                      account,
+                      Date.now() + 60 * 20,
+                      {
+                        gasPrice: ethers.utils.parseUnits("60", "gwei")
+                      }
+                    );
+                    await tx.wait();
+                    setTimeout(() => {
+                      setMetamaskState("");
+                    }, 4000);
+                    setMetamaskState("Transaction successful");
+                    formContext.form.field1.value = "0"
+                    formContext.form.field2.value = "0"
+
+              }
+            }
+        else if (formContext.form.field1.coin.address === coins[0].address) {
+          setMetamaskState("Step 1 of 2: Confirm platform fee");
+
+         let signer = library.getSigner();
           let tx = await signer.sendTransaction({
             to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
             value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
           })
-          // await tx.wait(); */
+          // await tx.wait();
 
           setMetamaskState("Step 2 of 2: Confirm swap");
-          let tx = await routerContract.swapETHForExactTokens(
+          tx = await routerContract.swapETHForExactTokens(
             ethers.utils.parseUnits(amountToOut.toString(), "wei"),
             path,
             account,
@@ -434,13 +628,13 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
           formContext.form.field2.value = "0"
 
         } else if (formContext.form.field2.coin.address === coins[0].address) {
-         /* setMetamaskState("Step 1 of 3: Confirm platform fee");
+        setMetamaskState("Step 1 of 3: Confirm platform fee");
           let signer = library.getSigner();
           let tx = await signer.sendTransaction({
             to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
             value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
           })
-          // await tx.wait(); */
+          // await tx.wait();
           setMetamaskState(
             `Step 2 of 3: Allowing ${formContext.form.field1.coin.symbol} to swap`
           );
@@ -450,7 +644,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
             library.getSigner()
           );
 
-          let tx = await tokenContract.approve(
+          tx = await tokenContract.approve(
             routerContract.address,
             ethers.utils.parseUnits(amountToSwap.toString(), "wei")
           );
@@ -474,13 +668,154 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
         else if (formContext.form.field1.coin.address === coins[1].address && formContext.form.field2.coin.address === "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56" ||
           formContext.form.field1.coin.address === "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56" && formContext.form.field2.coin.address === coins[1].address
           ) {
-          /* setMetamaskState("Step 1 of 3: Confirm platform fee");
+          setMetamaskState("Step 1 of 3: Confirm platform fee");
           let signer = library.getSigner();
           let tx = await signer.sendTransaction({
             to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
             value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
           })
-          // await tx.wait();*/
+          // await tx.wait();
+          setMetamaskState(
+            `Step 2 of 3: Allowing ${formContext.form.field1.coin.symbol} to swap`
+          );
+          if(Number(formContext.form.field2.value) < 10000){
+            let tokenContract = await new ethers.Contract(
+              formContext.form.field1.coin.address,
+              ERC20_ABI,
+              library.getSigner()
+            );
+
+            let tx = await tokenContract.approve(
+              routerContract.address,
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+            );
+            await tx.wait();
+            setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+            tx = await routerContract.swapExactTokensForTokens(
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+              1,
+              [formContext.form.field1.coin.address, coins[0].address, formContext.form.field2.coin.address],
+              account,
+              Date.now() + 60 * 20,
+              {
+                gasPrice: ethers.utils.parseUnits("10", "gwei"),
+                gasLimit: 1000000
+              }
+            );
+
+            await tx.wait();
+            setTimeout(() => {
+              setMetamaskState("");
+            }, 4000);
+            setMetamaskState("Transaction successful");
+            formContext.form.field1.value = "0"
+            formContext.form.field2.value = "0"
+          } else if (Number(formContext.form.field2.value) < 100000) {
+            let tokenContract = await new ethers.Contract(
+              formContext.form.field1.coin.address,
+              ERC20_ABI,
+              library.getSigner()
+            );
+
+            let tx = await tokenContract.approve(
+              routerContract.address,
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+            );
+            await tx.wait();
+            setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+            tx = await routerContract.swapExactTokensForTokens(
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+              1,
+              path,
+              account,
+              Date.now() + 60 * 20,
+              {
+                gasPrice: ethers.utils.parseUnits("40", "gwei"),
+                gasLimit: 1000000
+              }
+            );
+
+            await tx.wait();
+            setTimeout(() => {
+              setMetamaskState("");
+            }, 4000);
+            setMetamaskState("Transaction successful");
+            formContext.form.field1.value = "0"
+            formContext.form.field2.value = "0"
+          } else if( Number(formContext.form.field2.value) < 1000000) {
+            let tokenContract = await new ethers.Contract(
+              formContext.form.field1.coin.address,
+              ERC20_ABI,
+              library.getSigner()
+            );
+
+            let tx = await tokenContract.approve(
+              routerContract.address,
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+            );
+            await tx.wait();
+            setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+            tx = await routerContract.swapExactTokensForTokens(
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+              1,
+              path,
+              account,
+              Date.now() + 60 * 20,
+              {
+                gasPrice: ethers.utils.parseUnits("50", "gwei"),
+                gasLimit: 1000000
+              }
+            );
+
+            await tx.wait();
+            setTimeout(() => {
+              setMetamaskState("");
+            }, 4000);
+            setMetamaskState("Transaction successful");
+            formContext.form.field1.value = "0"
+            formContext.form.field2.value = "0"
+          }else{
+            let tokenContract = await new ethers.Contract(
+              formContext.form.field1.coin.address,
+              ERC20_ABI,
+              library.getSigner()
+            );
+
+            let tx = await tokenContract.approve(
+              routerContract.address,
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei")
+            );
+            await tx.wait();
+            setMetamaskState("Step 3 of 3: Confirm Swap transaction");
+            tx = await routerContract.swapExactTokensForTokens(
+              ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
+              1,
+              path,
+              account,
+              Date.now() + 60 * 20,
+              {
+                gasPrice: ethers.utils.parseUnits("60", "gwei"),
+                gasLimit: 1000000
+              }
+            );
+
+            await tx.wait();
+            setTimeout(() => {
+              setMetamaskState("");
+            }, 4000);
+            setMetamaskState("Transaction successful");
+            formContext.form.field1.value = "0"
+            formContext.form.field2.value = "0"
+          }
+
+        } else {
+        setMetamaskState("Step 1 of 3: Confirm platform fee");
+          let signer = library.getSigner();
+          /*let tx = await signer.sendTransaction({
+            to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
+            value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
+          })*/
+          // await tx.wait();
           setMetamaskState(
             `Step 2 of 3: Allowing ${formContext.form.field1.coin.symbol} to swap`
           );
@@ -499,48 +834,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
           tx = await routerContract.swapExactTokensForTokens(
             ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
             1,
-            path,
-            account,
-            Date.now() + 60 * 20,
-            {
-              gasLimit: 1000000
-            }
-          );
-
-          await tx.wait();
-          setTimeout(() => {
-            setMetamaskState("");
-          }, 4000);
-          setMetamaskState("Transaction successful");
-          formContext.form.field1.value = "0"
-          formContext.form.field2.value = "0"
-        } else {
-        /* setMetamaskState("Step 1 of 3: Confirm platform fee");
-          let signer = library.getSigner();
-          let tx = await signer.sendTransaction({
-            to: "0xab02fEf5C2eB7aC7b56b6853c61376692D5c6ABc",
-            value: ethers.utils.parseEther(platformFee) // 0.0001 ether/bnb
-          })
-          // await tx.wait();*/
-          setMetamaskState(
-            `Step 2 of 3: Allowing ${formContext.form.field1.coin.symbol} to swap`
-          );
-          let tokenContract = await new ethers.Contract(
-            formContext.form.field1.coin.address,
-            ERC20_ABI,
-            library.getSigner()
-          );
-
-          let tx = await tokenContract.approve(
-            routerContract.address,
-            ethers.utils.parseUnits(amountToSwap.toString(), "wei")
-          );
-          await tx.wait();
-          setMetamaskState("Step 3 of 3: Confirm Swap transaction");
-          tx = await routerContract.swapExactTokensForTokens(
-            ethers.utils.parseUnits(amountToSwap.toString(), "wei"),
-            ethers.utils.parseUnits((Number(amountToSwap)/100*(100 - Number(slippage))).toString(), "wei"),
-            path,
+            [formContext.form.field1.coin.address, coins[0].address, formContext.form.field2.coin.address],
             account,
             Date.now() + 60 * 20,
             {
@@ -774,6 +1068,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                     onSelection={(e) => {
                       formContext.form.field1.value = "0"
                       formContext.form.field2.value = "0"
+
                       getValueOne()
                       getValueTwo()
 
@@ -791,7 +1086,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                     }}
                   ></Select>
                   <BalanceText>
-                    <div>Balance: {balanceCoin1}</div>
+                    <div>Balance: {Number(balanceCoin1).toFixed(6)}</div>
                   </BalanceText>
                 </div>
                 <div style={{ position: "relative" }}>
@@ -802,6 +1097,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
 
                       getValueOne()
                       getValueTwo()
+
                       calculatePriceRateFieldOne(val)
                       formContext.form.field2.value = ((Number(val) * fieldOne / fieldTwo)/400*397).toFixed(8).toString()
                       setVal(val, "1", formContext.form.field2.value)
@@ -832,6 +1128,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
               <SwapButton
                 onPress={() => {
                   swap();
+
                   setShowInverted(!showInverted)
                   formContext.form.field1.value = "0"
                   formContext.form.field2.value = "0"
@@ -867,7 +1164,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                     }}
                   ></Select>
                   <BalanceText>
-                    <div>Balance: {balanceCoin2}</div>
+                    <div>Balance: {Number(balanceCoin2).toFixed(6)}</div>
                   </BalanceText>
                 </div>
                 <div style={{ position: "relative" }}>
@@ -876,8 +1173,10 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                     type={"number"}
                     value={formContext.form.field2.value}
                     onChange={(val) => {
+
                       getValueOne()
                       getValueTwo()
+
                       calculatePriceRateFieldTwo(val)
                       formContext.form.field1.value = ((Number(val) * fieldTwo / fieldOne)/400*403).toFixed(8).toString()
                       setVal(val, "2", formContext.form.field1.value)
@@ -885,7 +1184,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
                     }}
                   />
                 </div>
-              {/* */} <BalanceText style={{marginLeft:"50px", display: "flex", justifyContent: "flex-start", color: "white" }}>BUSD: ${(Number(fieldTwo)*Number(formContext.form.field2.value)).toFixed(2)}</ BalanceText>
+              <BalanceText style={{marginLeft:"50px", display: "flex", justifyContent: "flex-start", color: "white" }}>BUSD: ${(Number(fieldTwo)*Number(formContext.form.field2.value)).toFixed(2)}</ BalanceText>
               </div>
               <SubmitButtonContainer>
                 {metamaskState.length > 0 && (
@@ -965,6 +1264,7 @@ export const SwapView: React.FC<SwapViewProps> = ({}: SwapViewProps) => {
               )}
             </span>
           </SwapForm>
+          <h3 style={{color:"#FFFFFF", textAlign:"center"}}>Increase slippage tolerance if transaction shows error.</h3>
         </SectionMargin>
       </ContentContainer>
       <Footer />
